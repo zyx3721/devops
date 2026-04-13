@@ -46,10 +46,9 @@ func (Permission) TableName() string {
 // RolePermission 角色权限关联
 // 定义角色拥有的权限
 type RolePermission struct {
-	ID           uint      `gorm:"primarykey" json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	RoleID       uint      `gorm:"not null;index" json:"role_id"`       // 角色ID
-	PermissionID uint      `gorm:"not null;index" json:"permission_id"` // 权限ID
+	ID           uint `gorm:"primarykey" json:"id"`
+	RoleID       uint `gorm:"not null;index" json:"role_id"`       // 角色ID
+	PermissionID uint `gorm:"not null;index" json:"permission_id"` // 权限ID
 }
 
 // TableName 指定表名
