@@ -24,7 +24,7 @@
               <a-radio-button value="interactive">卡片</a-radio-button>
             </a-radio-group>
           </a-form-item>
-          <a-form-item label="消息内容" required><a-textarea v-model:value="form.content" placeholder="请输入消息内容" :rows="6" /></a-form-item>
+          <a-form-item label="消息内容" required><a-textarea v-model:value="form.content" :placeholder="contentPlaceholder" :rows="6" /></a-form-item>
           <a-form-item>
             <a-button type="primary" @click="handleSend" :loading="sending" block>
               <template #icon><SendOutlined /></template>发送消息
@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 import { SendOutlined } from '@ant-design/icons-vue'
 
 const props = defineProps<{
@@ -59,8 +59,8 @@ const emit = defineEmits<{
 
 const form = reactive({
   receive_id: '',
-  receive_id_type: 'chat_id' as const,
-  msg_type: 'text' as const,
+  receive_id_type: 'chat_id' as string,
+  msg_type: 'text' as string,
   content: ''
 })
 
@@ -68,6 +68,19 @@ const idTypeHelp = [
   { type: 'open_id', desc: '用户在应用内的唯一标识' },
   { type: 'chat_id', desc: '群组的唯一标识' }
 ]
+
+const contentPlaceholder = computed(() => {
+  switch (form.msg_type) {
+    case 'text':
+      return '示例：\n你好，这是一条测试消息'
+    case 'post':
+      return `示例：\n{\n  "zh_cn": {\n    "title": "消息标题",\n    "content": [\n      [\n        {"tag": "text", "text": "这是一段普通文字，"},\n        {"tag": "a", "text": "点击跳转", "href": "https://example.com"}\n      ]\n    ]\n  }\n}`
+    case 'interactive':
+      return `示例：\n{\n  "schema": "2.0",\n  "header": {\n    "title": {"content": "卡片标题", "tag": "plain_text"},\n    "template": "blue"\n  },\n  "body": {\n    "elements": [\n      {"tag": "markdown", "content": "**加粗文字**\\n普通文字"}\n    ]\n  }\n}`
+    default:
+      return '请输入消息内容'
+  }
+})
 
 const handleSend = () => {
   emit('send', form)
