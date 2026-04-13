@@ -385,12 +385,12 @@ const fetchAudits = async () => {
 const fetchPipelineStats = async () => {
   try {
     // 获取流水线列表
-    const pipelinesRes = await request.get('/pipelines', { params: { page: 1, page_size: 1 } })
+    const pipelinesRes = await request.get('/pipelines', { params: { page: 1, page_size: 1 }, skipErrorToast: true })
     pipelineStats.value.total = pipelinesRes?.data?.total || 0
 
     // 获取今日执行记录
     const today = new Date().toISOString().split('T')[0]
-    const runsRes = await request.get('/pipelines/runs', { params: { page: 1, page_size: 10 } })
+    const runsRes = await request.get('/pipelines/runs', { params: { page: 1, page_size: 10 }, skipErrorToast: true })
     const runs = runsRes?.data?.items || []
     recentPipelineRuns.value = runs.slice(0, 5)
 
@@ -411,7 +411,7 @@ const fetchPipelineStats = async () => {
 // 获取成本统计
 const fetchCostStats = async () => {
   try {
-    const res = await request.get('/cost/overview')
+    const res = await request.get('/cost/overview', { skipErrorToast: true })
     if (res?.data) {
       costStats.value = {
         monthCost: res.data.month_cost || res.data.total_cost || 0,
@@ -428,7 +428,7 @@ const fetchCostStats = async () => {
 // 获取安全统计
 const fetchSecurityStats = async () => {
   try {
-    const res = await request.get('/security/overview')
+    const res = await request.get('/security/overview', { skipErrorToast: true })
     if (res?.data) {
       securityStats.value = {
         highRisk: (res.data.critical || 0) + (res.data.high || 0),
