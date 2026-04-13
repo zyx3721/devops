@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 
 	apperrors "devops/pkg/errors"
@@ -91,6 +93,8 @@ var (
 func LoadConfig() (*Config, error) {
 	var err error
 	once.Do(func() {
+		loadDotEnv()
+
 		cfg = &Config{
 			// 服务器配置
 			Port:            getEnv("PORT", "8080"),
@@ -301,4 +305,34 @@ func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
 		}
 	}
 	return defaultValue
+}
+
+func loadDotEnv() {
+	wd, err := os.Getwd()
+	if err != nil {
+		return
+	}
+
+	envPath := findEnvFile(wd)
+	if envPath == "" {
+		return
+	}
+
+	_ = godotenv.Load(envPath)
+}
+
+func findEnvFile(startDir string) string {
+	dir := startDir
+	for {
+		envPath := filepath.Join(dir, ".env")
+		if info, err := os.Stat(envPath); err == nil && !info.IsDir() {
+			return envPath
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
 }
