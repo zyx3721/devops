@@ -1,6 +1,6 @@
 -- DevOps 平台建表 SQL
 -- 请在 MySQL 中执行此脚本
--- 更新时间: 2026-01-04
+-- 更新时间: 2026-04-13
 
 CREATE TABLE IF NOT EXISTS `cron_hpa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last_login_at` datetime(3) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_users_username` (`username`),
+  UNIQUE KEY `idx_users_email` (`email`),
   KEY `idx_users_deleted_at` (`deleted_at`),
   KEY `idx_users_last_login_at` (`last_login_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
@@ -46,23 +47,31 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- 2. 审计日志表
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tenant_id` int unsigned DEFAULT NULL COMMENT '租户ID',
   `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
-  `user_id` bigint unsigned DEFAULT 0,
+  `user_id` bigint unsigned DEFAULT NULL COMMENT '用户ID',
   `username` varchar(100) DEFAULT '',
   `action` varchar(50) NOT NULL COMMENT '操作类型: create/update/delete',
-  `resource` varchar(100) NOT NULL COMMENT '资源类型',
-  `resource_id` bigint unsigned DEFAULT 0 COMMENT '资源ID',
+  `resource_type` varchar(50) NOT NULL COMMENT '资源类型',
+  `resource_id` bigint unsigned DEFAULT NULL COMMENT '资源ID',
   `resource_name` varchar(255) DEFAULT '' COMMENT '资源名称',
+  `old_value` json DEFAULT NULL COMMENT '变更前的值',
+  `new_value` json DEFAULT NULL COMMENT '变更后的值',
   `detail` text COMMENT '详情JSON',
   `ip_address` varchar(50) DEFAULT '' COMMENT '客户端IP',
   `user_agent` varchar(500) DEFAULT '' COMMENT 'User-Agent',
+  `request_id` varchar(50) DEFAULT NULL COMMENT '请求ID',
+  `trace_id` varchar(50) DEFAULT NULL COMMENT '追踪ID',
+  `duration` bigint DEFAULT NULL COMMENT '操作耗时(ms)',
   `status` varchar(20) DEFAULT 'success' COMMENT '状态',
-  `error_msg` varchar(500) DEFAULT '' COMMENT '错误信息',
+  `error_message` text COMMENT '错误信息',
   PRIMARY KEY (`id`),
   KEY `idx_audit_user` (`user_id`),
   KEY `idx_audit_action` (`action`),
-  KEY `idx_audit_resource` (`resource`),
-  KEY `idx_audit_created` (`created_at`)
+  KEY `idx_audit_resource` (`resource_type`),
+  KEY `idx_audit_created` (`created_at`),
+  KEY `idx_audit_tenant_id` (`tenant_id`),
+  KEY `idx_audit_request_id` (`request_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作审计日志';
 
 -- ============================================
@@ -109,6 +118,7 @@ CREATE TABLE IF NOT EXISTS `k8s_clusters` (
   `status` varchar(20) DEFAULT 'active' NOT NULL,
   `is_default` tinyint(1) DEFAULT 0,
   `check_timeout` int DEFAULT 180 NOT NULL,
+  `insecure_skip_tls` tinyint(1) DEFAULT 0 COMMENT '跳过TLS证书验证',
   `created_by` bigint unsigned DEFAULT NULL,
   `updated_by` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -149,6 +159,7 @@ CREATE TABLE IF NOT EXISTS `feishu_bots` (
   `deleted_at` datetime(3) DEFAULT NULL,
   `name` varchar(100) NOT NULL,
   `webhook_url` varchar(500) NOT NULL,
+  `project` varchar(100) DEFAULT '' COMMENT '关联项目',
   `secret` varchar(100) DEFAULT '',
   `description` text,
   `status` varchar(20) DEFAULT 'active' NOT NULL,
@@ -403,9 +414,14 @@ CREATE TABLE IF NOT EXISTS `alert_configs` (
   `severity` varchar(20) DEFAULT 'warning' COMMENT '严重级别: info/warning/critical',
   `notify_channels` varchar(500) DEFAULT '' COMMENT '通知渠道: feishu,dingtalk,wechatwork',
   `notify_users` varchar(500) DEFAULT '' COMMENT '通知用户ID列表',
+  `platform` varchar(50) DEFAULT '' COMMENT '通知平台',
+  `bot_id` bigint unsigned DEFAULT NULL COMMENT '机器人ID',
   `feishu_bot_id` bigint unsigned DEFAULT NULL COMMENT '飞书机器人ID',
   `dingtalk_bot_id` bigint unsigned DEFAULT NULL COMMENT '钉钉机器人ID',
   `wechatwork_bot_id` bigint unsigned DEFAULT NULL COMMENT '企业微信机器人ID',
+  `template_id` bigint unsigned DEFAULT NULL COMMENT '消息模板ID',
+  `channels` text DEFAULT NULL COMMENT '通知渠道配置JSON',
+  `conditions` text DEFAULT NULL COMMENT '告警条件配置JSON',
   `enabled` tinyint(1) DEFAULT 1,
   `description` varchar(500) DEFAULT '',
   `created_by` bigint unsigned DEFAULT 0,
@@ -435,6 +451,24 @@ CREATE TABLE IF NOT EXISTS `alert_histories` (
   KEY `idx_alert_history_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警历史';
 
+-- 22.1 系统消息模板表
+CREATE TABLE IF NOT EXISTS `sys_message_templates` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT NULL,
+  `updated_at` datetime(3) DEFAULT NULL,
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `name` varchar(100) NOT NULL,
+  `template_type` varchar(20) DEFAULT 'text' COMMENT '模板类型: text/card',
+  `title` varchar(200) DEFAULT NULL,
+  `content` text,
+  `variables` text COMMENT '模板变量列表JSON',
+  `description` varchar(255) DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_name` (`name`),
+  KEY `idx_sys_message_templates_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统消息模板';
+
 -- ============================================
 -- 应用与部署相关表
 -- ============================================
@@ -447,17 +481,29 @@ CREATE TABLE IF NOT EXISTS `applications` (
   `name` varchar(100) NOT NULL COMMENT '应用名称',
   `display_name` varchar(200) DEFAULT '' COMMENT '显示名称',
   `description` varchar(500) DEFAULT '' COMMENT '描述',
+  `git_repo` varchar(500) DEFAULT '' COMMENT '代码仓库地址',
   `team` varchar(100) DEFAULT '' COMMENT '所属团队',
   `owner` varchar(100) DEFAULT '' COMMENT '负责人',
-  `repo_url` varchar(500) DEFAULT '' COMMENT '代码仓库地址',
   `language` varchar(50) DEFAULT '' COMMENT '开发语言',
   `framework` varchar(50) DEFAULT '' COMMENT '框架',
   `status` varchar(20) DEFAULT 'active' COMMENT '状态: active/inactive/archived',
+  `jenkins_instance_id` bigint unsigned DEFAULT NULL COMMENT 'Jenkins实例ID',
+  `jenkins_job_name` varchar(200) DEFAULT '' COMMENT 'Jenkins Job名称',
+  `k8s_cluster_id` bigint unsigned DEFAULT NULL COMMENT 'K8s集群ID',
+  `k8s_namespace` varchar(100) DEFAULT '' COMMENT 'K8s命名空间',
+  `k8s_deployment` varchar(200) DEFAULT '' COMMENT 'K8s Deployment名称',
+  `notify_platform` varchar(50) DEFAULT '' COMMENT '通知平台',
+  `notify_app_id` bigint unsigned DEFAULT NULL COMMENT '通知应用ID',
+  `notify_receive_id` varchar(200) DEFAULT '' COMMENT '通知接收ID',
+  `notify_receive_type` varchar(50) DEFAULT '' COMMENT '通知接收类型',
   `created_by` bigint unsigned DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_app_name` (`name`),
   KEY `idx_app_team` (`team`),
-  KEY `idx_app_status` (`status`)
+  KEY `idx_app_status` (`status`),
+  KEY `idx_jenkins_instance` (`jenkins_instance_id`),
+  KEY `idx_k8s_cluster` (`k8s_cluster_id`),
+  KEY `idx_created_by` (`created_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用管理';
 
 -- 24. 应用环境配置表
@@ -594,6 +640,16 @@ CREATE TABLE IF NOT EXISTS `health_check_configs` (
   `alert_enabled` tinyint(1) DEFAULT 1 COMMENT '是否启用告警',
   `alert_platform` varchar(50) DEFAULT '' COMMENT '告警平台: feishu/dingtalk/wechatwork',
   `alert_bot_id` bigint unsigned DEFAULT NULL COMMENT '告警机器人ID',
+  `cert_expiry_date` datetime(3) DEFAULT NULL COMMENT '证书过期时间',
+  `cert_days_remaining` int DEFAULT NULL COMMENT '证书剩余天数',
+  `cert_issuer` varchar(500) DEFAULT '' COMMENT '证书颁发者',
+  `cert_subject` varchar(500) DEFAULT '' COMMENT '证书主题',
+  `cert_serial_number` varchar(100) DEFAULT '' COMMENT '证书序列号',
+  `critical_days` int DEFAULT 7 COMMENT '严重告警阈值(天)',
+  `warning_days` int DEFAULT 30 COMMENT '警告告警阈值(天)',
+  `notice_days` int DEFAULT 60 COMMENT '提醒告警阈值(天)',
+  `last_alert_level` varchar(20) DEFAULT '' COMMENT '最后告警级别: expired/critical/warning/notice/normal',
+  `last_alert_at` datetime(3) DEFAULT NULL COMMENT '最后告警时间',
   `last_check_at` datetime(3) DEFAULT NULL COMMENT '最后检查时间',
   `last_status` varchar(20) DEFAULT 'unknown' COMMENT '最后状态: healthy/unhealthy/unknown',
   `last_error` text COMMENT '最后错误信息',
@@ -604,7 +660,10 @@ CREATE TABLE IF NOT EXISTS `health_check_configs` (
   KEY `idx_hc_enabled` (`enabled`),
   KEY `idx_hc_target` (`target_id`),
   KEY `idx_hc_alert_bot` (`alert_bot_id`),
-  KEY `idx_hc_created_by` (`created_by`)
+  KEY `idx_hc_created_by` (`created_by`),
+  KEY `idx_hc_type_enabled` (`type`, `enabled`),
+  KEY `idx_hc_cert_days_remaining` (`cert_days_remaining`),
+  KEY `idx_hc_last_alert_level` (`last_alert_level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='健康检查配置';
 
 -- 29. 健康检查历史表
@@ -619,10 +678,15 @@ CREATE TABLE IF NOT EXISTS `health_check_histories` (
   `response_time_ms` bigint DEFAULT 0 COMMENT '响应时间(ms)',
   `error_msg` text COMMENT '错误信息',
   `alert_sent` tinyint(1) DEFAULT 0 COMMENT '是否已发送告警',
+  `cert_days_remaining` int DEFAULT NULL COMMENT '证书剩余天数',
+  `cert_expiry_date` datetime(3) DEFAULT NULL COMMENT '证书过期时间',
+  `alert_level` varchar(20) DEFAULT '' COMMENT '告警级别: expired/critical/warning/notice/normal',
   PRIMARY KEY (`id`),
   KEY `idx_hc_history_config` (`config_id`),
   KEY `idx_hc_history_status` (`status`),
-  KEY `idx_hc_history_created` (`created_at`)
+  KEY `idx_hc_history_created` (`created_at`),
+  KEY `idx_hc_history_alert_level` (`alert_level`),
+  KEY `idx_hc_history_config_created` (`config_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='健康检查历史';
 
 -- ============================================
@@ -652,43 +716,13 @@ CREATE TABLE IF NOT EXISTS `permissions` (
   `display_name` varchar(100) NOT NULL COMMENT '显示名称',
   `resource` varchar(50) NOT NULL COMMENT '资源类型',
   `action` varchar(50) NOT NULL COMMENT '操作类型',
+  `description` text COMMENT '权限描述',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_permissions_name` (`name`)
+  UNIQUE KEY `idx_permissions_name` (`name`),
+  KEY `idx_permissions_resource` (`resource`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限';
 
 -- 32. 角色权限关联表
-SET @permissions_description_exists := (
-  SELECT COUNT(*)
-  FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'permissions'
-    AND COLUMN_NAME = 'description'
-);
-SET @permissions_description_sql := IF(
-  @permissions_description_exists = 0,
-  'ALTER TABLE `permissions` ADD COLUMN `description` text AFTER `action`',
-  'SELECT 1'
-);
-PREPARE permissions_description_stmt FROM @permissions_description_sql;
-EXECUTE permissions_description_stmt;
-DEALLOCATE PREPARE permissions_description_stmt;
-
-SET @permissions_resource_index_exists := (
-  SELECT COUNT(*)
-  FROM information_schema.STATISTICS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'permissions'
-    AND INDEX_NAME = 'idx_permissions_resource'
-);
-SET @permissions_resource_index_sql := IF(
-  @permissions_resource_index_exists = 0,
-  'ALTER TABLE `permissions` ADD KEY `idx_permissions_resource` (`resource`)',
-  'SELECT 1'
-);
-PREPARE permissions_resource_index_stmt FROM @permissions_resource_index_sql;
-EXECUTE permissions_resource_index_stmt;
-DEALLOCATE PREPARE permissions_resource_index_stmt;
-
 CREATE TABLE IF NOT EXISTS `role_permissions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -860,7 +894,7 @@ CREATE TABLE IF NOT EXISTS `approval_actions` (
 
 -- 插入默认管理员用户 (密码: admin123)
 INSERT IGNORE INTO `users` (`username`, `password`, `email`, `role`, `status`) 
-VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', 'admin@example.com', 'admin', 'active');
+VALUES ('admin', '$2a$10$0gF01Wb2L4hAccdr653/f.9AQ2a.JwAB1UObAAwW9x8ZQ9F.KOvTm', 'admin@example.com', 'admin', 'active');
 
 -- 插入默认角色
 INSERT IGNORE INTO `roles` (`name`, `display_name`, `description`, `is_system`) VALUES
@@ -872,6 +906,12 @@ INSERT IGNORE INTO `roles` (`name`, `display_name`, `description`, `is_system`) 
 INSERT IGNORE INTO `approval_rules` (`app_id`, `env`, `need_approval`, `approvers`, `timeout_minutes`, `enabled`, `created_by`) VALUES
 (0, 'prod', 1, '', 30, 1, 1),
 (0, 'production', 1, '', 30, 1, 1);
+
+-- 插入默认消息模板
+INSERT IGNORE INTO `sys_message_templates` (`created_at`, `updated_at`, `name`, `template_type`, `title`, `content`, `variables`, `description`, `created_by`)
+VALUES (NOW(), NOW(), 'COST_BUDGET_WARNING', 'card', '成本预算告警',
+'{"config": {"wide_screen_mode": true}, "header": {"template": "red", "title": {"content": "成本超支预警", "tag": "plain_text"}}, "elements": [{"tag": "div", "fields": [{"is_short": true, "text": {"tag": "lark_md", "content": "**项目：**\n{{.Project}}"}}, {"is_short": true, "text": {"tag": "lark_md", "content": "**当前成本：**\n{{.CurrentCost}}"}}, {"is_short": true, "text": {"tag": "lark_md", "content": "**预算：**\n{{.Budget}}"}}, {"is_short": true, "text": {"tag": "lark_md", "content": "**使用率：**\n{{.UsageRate}}%"}}]}, {"tag": "hr"}, {"tag": "div", "text": {"tag": "lark_md", "content": "{{.Message}}"}}]}',
+'["Project", "CurrentCost", "Budget", "UsageRate", "Message"]', '成本告警模板', 1);
 
 -- 插入默认发布窗口（工作日 10:00-18:00）
 INSERT IGNORE INTO `deploy_windows` (`app_id`, `env`, `weekdays`, `start_time`, `end_time`, `allow_emergency`, `enabled`, `created_by`) VALUES
