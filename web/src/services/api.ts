@@ -1,7 +1,13 @@
 import axios from 'axios'
 import { message } from 'ant-design-vue'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/app/api/v1'
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    skipErrorToast?: boolean
+  }
+}
+
+const BASE_URL = import.meta.env.VITE_API_BASE || '/app/api/v1'
 
 const request = axios.create({
   baseURL: BASE_URL,
@@ -133,7 +139,9 @@ request.interceptors.response.use(
       errMsg = '网络连接失败，请检查网络后重试'
     }
 
-    message.error(errMsg)
+    if (!error.config?.skipErrorToast) {
+      message.error(errMsg)
+    }
     return Promise.reject(error)
   }
 )
