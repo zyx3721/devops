@@ -47,9 +47,11 @@ type Config struct {
 	Debug                bool
 
 	// Redis 配置
-	RedisAddr     string
-	RedisPassword string
-	RedisDB       int
+	RedisAddr        string
+	RedisPassword    string
+	RedisDB          int
+	RedisPoolSize    int
+	RedisMinIdleConns int
 
 	// Jenkins 配置
 	JenkinsURL   string
@@ -60,6 +62,8 @@ type Config struct {
 	K8sKubeConfigPath string
 	K8sNamespace      string
 	K8sCheckTimeout   int
+	K8sRegistry       string
+	K8sRepository     string
 
 	// 飞书配置
 	FeishuAppID     string
@@ -120,9 +124,11 @@ func LoadConfig() (*Config, error) {
 			Debug:                getEnv("DEBUG", "false") == "true",
 
 			// Redis 配置
-			RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
-			RedisPassword: getEnv("REDIS_PASSWORD", ""),
-			RedisDB:       getIntEnv("REDIS_DB", 0),
+			RedisAddr:         getEnv("REDIS_ADDR", "localhost:6379"),
+			RedisPassword:     getEnv("REDIS_PASSWORD", ""),
+			RedisDB:           getIntEnv("REDIS_DB", 0),
+			RedisPoolSize:     getIntEnv("REDIS_POOL_SIZE", 10),
+			RedisMinIdleConns: getIntEnv("REDIS_MIN_IDLE_CONNS", 5),
 
 			// Jenkins 配置
 			JenkinsURL:   getEnv("JENKINS_URL", "http://localhost:8080"),
@@ -133,6 +139,8 @@ func LoadConfig() (*Config, error) {
 			K8sKubeConfigPath: getEnv("K8S_KUBECONFIG_PATH", ""),
 			K8sNamespace:      getEnv("K8S_NAMESPACE", "default"),
 			K8sCheckTimeout:   getIntEnv("K8S_CHECK_TIMEOUT", 300),
+			K8sRegistry:       getEnv("K8S_REGISTRY", ""),
+			K8sRepository:     getEnv("K8S_REPOSITORY", ""),
 
 			// 飞书配置
 			FeishuAppID:     getEnv("FEISHU_APP_ID", ""),
@@ -202,6 +210,11 @@ func (a *Application) GinServer() *gin.Engine {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	if a.server == nil {
+		if cfg != nil && cfg.Debug {
+			gin.SetMode(gin.DebugMode)
+		} else {
+			gin.SetMode(gin.ReleaseMode)
+		}
 		a.server = gin.New()
 
 		// 基础中间件
