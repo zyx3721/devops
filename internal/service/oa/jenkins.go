@@ -1,0 +1,89 @@
+package oa
+
+import (
+	"fmt"
+	"strings"
+)
+
+// JenkinsJob Jenkins任务信息
+type JenkinsJob struct {
+	JobName   string `json:"jobName"`
+	JobBranch string `json:"jobBranch"`
+}
+
+// NewJenkinsJob 创建JenkinsJob
+func NewJenkinsJob(jobName, jobBranch string) *JenkinsJob {
+	return &JenkinsJob{
+		JobName:   jobName,
+		JobBranch: jobBranch,
+	}
+}
+
+// GetLatestJson 获取最新的 JSON 数据
+func GetLatestJson() (map[string]interface{}, error) {
+	req, err := GetLatestJsonFileContent()
+	if err != nil {
+		Logger.Error("Failed to get latest json: %v", err)
+		return nil, err
+	}
+	return req, nil
+}
+
+// HandleLatestJson 处理最新的 JSON 数据
+func (j *JenkinsJob) HandleLatestJson(jsonData map[string]interface{}) ([]*JenkinsJob, error) {
+	data, ok := jsonData["data"].(map[string]interface{})
+	if !ok {
+		Logger.Error("Failed to extract data from jsonData")
+		return nil, fmt.Errorf("failed to extract data from jsonData")
+	}
+
+	latestFile, ok := data["latest_file"].(map[string]interface{})
+	if !ok {
+		Logger.Error("Failed to extract latest_file from data")
+		return nil, fmt.Errorf("failed to extract latest_file from data")
+	}
+
+	originalData, ok := latestFile["original_data"].(map[string]interface{})
+	if !ok {
+		Logger.Error("Failed to extract original_data from latest_file")
+		return nil, fmt.Errorf("failed to extract original_data from latest_file")
+	}
+
+	jobName, ok := originalData["fwm"].(string)
+	if !ok {
+		Logger.Error("Failed to extract jobName from original_data")
+		return nil, fmt.Errorf("failed to extract jobName from original_data")
+	}
+
+	projectNames := strings.Split(jobName, "<br>")
+	if len(projectNames) == 0 {
+		Logger.Error("Failed to extract projectName from fwm")
+		return nil, fmt.Errorf("failed to extract projectName from fwm")
+	}
+	jenkinsJobs := make([]*JenkinsJob, 0)
+
+	for _, project := range projectNames {
+		project = strings.TrimSpace(project)
+		if project == "" {
+			continue
+		}
+
+		project = strings.ReplaceAll(project, "&nbsp;", " ")
+
+		parts := strings.Fields(project)
+		if len(parts) < 2 {
+			Logger.Warn("Skipping invalid project format: %s", project)
+			continue
+		}
+
+		projectName := parts[0]
+		branch := parts[1]
+		Logger.Info("Project Name: %s, Branch: %s", projectName, branch)
+		jenkinsJobs = append(jenkinsJobs, &JenkinsJob{
+			JobName:   projectName,
+			JobBranch: branch,
+		})
+	}
+
+	return jenkinsJobs, nil
+}

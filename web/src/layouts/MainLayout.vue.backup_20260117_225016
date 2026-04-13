@@ -1,0 +1,446 @@
+<template>
+  <a-layout style="min-height: 100vh">
+    <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible theme="dark" width="240">
+      <div class="logo">
+        <span v-if="!collapsed">DevOps 管理系统</span>
+        <span v-else>DevOps</span>
+      </div>
+      <a-menu v-model:selectedKeys="selectedKeys" v-model:openKeys="openKeys" theme="dark" mode="inline" @click="handleMenuClick">
+        <a-menu-item key="/dashboard">
+          <template #icon><DashboardOutlined /></template>
+          仪表盘
+        </a-menu-item>
+        <a-sub-menu key="app">
+          <template #icon><AppstoreOutlined /></template>
+          <template #title>应用管理</template>
+          <a-menu-item key="/applications">应用列表</a-menu-item>
+          <a-sub-menu key="traffic">
+            <template #title>流量治理</template>
+            <a-menu-item key="/traffic/ratelimit">限流配置</a-menu-item>
+            <a-menu-item key="/traffic/circuitbreaker">熔断降级</a-menu-item>
+            <a-menu-item key="/traffic/routing">流量路由</a-menu-item>
+            <a-menu-item key="/traffic/loadbalance">负载均衡</a-menu-item>
+            <a-menu-item key="/traffic/timeout">超时重试</a-menu-item>
+            <a-menu-item key="/traffic/mirror">流量镜像</a-menu-item>
+            <a-menu-item key="/traffic/fault">故障注入</a-menu-item>
+            <a-menu-item key="/traffic/monitor">流量监控</a-menu-item>
+          </a-sub-menu>
+          <a-menu-item key="/deploys">部署记录</a-menu-item>
+          <a-menu-item key="/deploy/check">部署检查</a-menu-item>
+          <a-menu-item key="/canary/list">灰度发布</a-menu-item>
+          <a-menu-item key="/bluegreen/list">蓝绿部署</a-menu-item>
+        </a-sub-menu>
+        <a-menu-item key="/healthcheck">
+          <template #icon><HeartOutlined /></template>
+          健康检查
+        </a-menu-item>
+
+        <a-sub-menu key="pipeline">
+          <template #icon><RocketOutlined /></template>
+          <template #title>CI/CD 流水线</template>
+          <a-menu-item key="/pipeline/list">流水线列表</a-menu-item>
+          <a-menu-item key="/pipeline/stats">执行统计</a-menu-item>
+          <a-menu-item key="/pipeline/git-repos">Git 仓库</a-menu-item>
+          <a-menu-item key="/pipeline/artifacts">构建制品</a-menu-item>
+          <a-menu-item key="/pipeline/builders">构建 Pod</a-menu-item>
+          <a-menu-item key="/pipeline/notify">通知配置</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="jenkins">
+          <template #icon><ThunderboltOutlined /></template>
+          <template #title>Jenkins</template>
+          <a-menu-item key="/jenkins/instances">实例管理</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="k8s">
+          <template #icon><CloudOutlined /></template>
+          <template #title>Kubernetes</template>
+          <a-menu-item key="/k8s/overview">集群概览</a-menu-item>
+          <a-menu-item key="/k8s/clusters">集群管理</a-menu-item>
+          <a-menu-item key="/security/overview">安全概览</a-menu-item>
+          <a-menu-item key="/security/image-scan">镜像扫描</a-menu-item>
+          <a-menu-item key="/security/config-check">配置检查</a-menu-item>
+          <a-menu-item key="/security/audit-log">安全审计</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="approval">
+          <template #icon><AuditOutlined /></template>
+          <template #title>发布审批</template>
+          <a-menu-item key="/approval/pending">待审批</a-menu-item>
+          <a-menu-item key="/approval/history">审批历史</a-menu-item>
+          <a-menu-item key="/approval/chains">审批链管理</a-menu-item>
+          <a-menu-item key="/approval/instances">审批实例</a-menu-item>
+          <a-menu-item key="/approval/rules">审批规则</a-menu-item>
+          <a-menu-item key="/approval/windows">发布窗口</a-menu-item>
+          <a-menu-item key="/deploy/locks">部署锁</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="message">
+          <template #icon><MessageOutlined /></template>
+          <template #title>消息通道</template>
+          <a-menu-item key="/feishu/message">飞书</a-menu-item>
+          <a-menu-item key="/dingtalk/message">钉钉</a-menu-item>
+          <a-menu-item key="/wechatwork/message">企业微信</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="oa">
+          <template #icon><FileTextOutlined /></template>
+          <template #title>OA</template>
+          <a-menu-item key="/oa/data">数据管理</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="alert">
+          <template #icon><AlertOutlined /></template>
+          <template #title>告警管理</template>
+          <a-menu-item key="/alert/overview">告警概览</a-menu-item>
+          <a-menu-item key="/alert/history">告警历史</a-menu-item>
+          <a-menu-item key="/alert/config">告警配置</a-menu-item>
+          <a-menu-item key="/alert/silence">静默规则</a-menu-item>
+          <a-menu-item key="/alert/escalation">升级规则</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="logs">
+          <template #icon><FileSearchOutlined /></template>
+          <template #title>日志中心</template>
+          <a-menu-item key="/logs/center">日志查看</a-menu-item>
+          <a-menu-item key="/logs/search">日志搜索</a-menu-item>
+          <a-menu-item key="/logs/stats">日志统计</a-menu-item>
+          <a-menu-item key="/logs/compare">日志对比</a-menu-item>
+          <a-menu-item key="/logs/alerts">日志告警</a-menu-item>
+          <a-menu-item key="/logs/bookmarks">日志书签</a-menu-item>
+          <a-menu-item key="/logs/export">日志导出</a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="cost">
+          <template #icon><DollarOutlined /></template>
+          <template #title>成本管理</template>
+          <a-menu-item key="/cost/overview">成本概览</a-menu-item>
+          <a-menu-item key="/cost/trend">成本趋势</a-menu-item>
+          <a-menu-item key="/cost/comparison">成本对比</a-menu-item>
+          <a-menu-item key="/cost/analysis">多维分析</a-menu-item>
+          <a-menu-item key="/cost/waste">资源浪费</a-menu-item>
+          <a-menu-item key="/cost/suggestions">优化建议</a-menu-item>
+          <a-menu-item key="/cost/alerts">成本告警</a-menu-item>
+          <a-menu-item key="/cost/budget">预算管理</a-menu-item>
+          <a-menu-item key="/cost/config">成本配置</a-menu-item>
+        </a-sub-menu>
+
+        <a-sub-menu key="system">
+          <template #icon><SettingOutlined /></template>
+          <template #title>系统管理</template>
+          <a-menu-item key="/users">用户管理</a-menu-item>
+          <a-menu-item key="/rbac/roles">角色权限</a-menu-item>
+          <a-menu-item key="/audit/logs">操作审计</a-menu-item>
+          <a-menu-item key="/ai/knowledge">AI 知识库</a-menu-item>
+          <a-menu-item key="/ai/config">AI 配置</a-menu-item>
+        </a-sub-menu>
+      </a-menu>
+    </a-layout-sider>
+
+    <a-layout>
+      <a-layout-header style="background: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between">
+        <div class="trigger" @click="collapsed = !collapsed">
+          <MenuUnfoldOutlined v-if="collapsed" />
+          <MenuFoldOutlined v-else />
+        </div>
+        <div class="header-right">
+          <a-space>
+            <GlobalSearch />
+            <FavoriteList />
+            <ThemeSwitch />
+            <a-dropdown>
+              <a-space style="cursor: pointer">
+                <a-avatar>{{ userInfo?.username?.charAt(0)?.toUpperCase() || 'U' }}</a-avatar>
+                <span>{{ userInfo?.username || '管理员' }}</span>
+              </a-space>
+              <template #overlay>
+                <a-menu @click="handleDropdownClick">
+                  <a-menu-item key="profile">个人中心</a-menu-item>
+                  <a-menu-divider />
+                  <a-menu-item key="logout">退出登录</a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
+          </a-space>
+        </div>
+      </a-layout-header>
+
+      <a-layout-content style="margin: 16px; background: #f0f2f5; min-height: calc(100vh - 80px)">
+        <!-- 面包屑导航 -->
+        <a-breadcrumb style="margin-bottom: 12px" v-if="breadcrumbs.length > 1">
+          <a-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="index">
+            <router-link v-if="item.path && index < breadcrumbs.length - 1" :to="item.path">
+              {{ item.title }}
+            </router-link>
+            <span v-else>{{ item.title }}</span>
+          </a-breadcrumb-item>
+        </a-breadcrumb>
+        <div style="background: #fff; padding: 24px; border-radius: 4px">
+          <router-view />
+        </div>
+      </a-layout-content>
+    </a-layout>
+
+    <!-- AI 助手悬浮窗 -->
+    <AIChatWidget />
+  </a-layout>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  DashboardOutlined,
+  ThunderboltOutlined,
+  CloudOutlined,
+  MessageOutlined,
+  FileTextOutlined,
+  AlertOutlined,
+  AppstoreOutlined,
+  HeartOutlined,
+  SettingOutlined,
+  AuditOutlined,
+  DollarOutlined,
+  RocketOutlined,
+  FileSearchOutlined
+} from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import GlobalSearch from '@/components/GlobalSearch.vue'
+import FavoriteList from '@/components/FavoriteList.vue'
+import ThemeSwitch from '@/components/ThemeSwitch.vue'
+import { AIChatWidget } from '@/components/ai'
+
+const router = useRouter()
+const route = useRoute()
+
+const collapsed = ref(false)
+const selectedKeys = ref<string[]>([route.path])
+
+// 面包屑配置
+const breadcrumbMap: Record<string, { title: string; parent?: string }> = {
+  '/dashboard': { title: '仪表盘' },
+  '/applications': { title: '应用列表', parent: 'app' },
+  '/applications/traffic': { title: '流量治理', parent: 'app' },
+  '/traffic/ratelimit': { title: '限流配置', parent: 'traffic' },
+  '/traffic/circuitbreaker': { title: '熔断降级', parent: 'traffic' },
+  '/traffic/routing': { title: '流量路由', parent: 'traffic' },
+  '/traffic/loadbalance': { title: '负载均衡', parent: 'traffic' },
+  '/traffic/timeout': { title: '超时重试', parent: 'traffic' },
+  '/traffic/mirror': { title: '流量镜像', parent: 'traffic' },
+  '/traffic/fault': { title: '故障注入', parent: 'traffic' },
+  '/deploys': { title: '部署记录', parent: 'app' },
+  '/deploy/check': { title: '部署检查', parent: 'app' },
+  '/canary/list': { title: '灰度发布', parent: 'app' },
+  '/bluegreen/list': { title: '蓝绿部署', parent: 'app' },
+  '/traffic/monitor': { title: '流量监控', parent: 'traffic' },
+  '/healthcheck': { title: '健康检查' },
+  '/pipeline/list': { title: '流水线列表', parent: 'pipeline' },
+  '/pipeline/git-repos': { title: 'Git 仓库', parent: 'pipeline' },
+  '/pipeline/artifacts': { title: '构建制品', parent: 'pipeline' },
+  '/pipeline/builders': { title: '构建 Pod', parent: 'pipeline' },
+  '/pipeline/notify': { title: '通知配置', parent: 'pipeline' },
+  '/pipeline/stats': { title: '执行统计', parent: 'pipeline' },
+  '/pipeline/create': { title: '创建流水线', parent: 'pipeline' },
+  '/jenkins/instances': { title: '实例管理', parent: 'jenkins' },
+  '/k8s/overview': { title: '集群概览', parent: 'k8s' },
+  '/k8s/clusters': { title: '集群管理', parent: 'k8s' },
+  '/k8s/terminal': { title: 'Pod 终端', parent: 'k8s' },
+  '/security/overview': { title: '安全概览', parent: 'k8s' },
+  '/security/image-scan': { title: '镜像扫描', parent: 'k8s' },
+  '/security/config-check': { title: '配置检查', parent: 'k8s' },
+  '/security/audit-log': { title: '安全审计', parent: 'k8s' },
+  '/approval/pending': { title: '待审批', parent: 'approval' },
+  '/approval/history': { title: '审批历史', parent: 'approval' },
+  '/approval/chains': { title: '审批链管理', parent: 'approval' },
+  '/approval/instances': { title: '审批实例', parent: 'approval' },
+  '/approval/rules': { title: '审批规则', parent: 'approval' },
+  '/approval/windows': { title: '发布窗口', parent: 'approval' },
+  '/deploy/locks': { title: '部署锁', parent: 'approval' },
+  '/feishu/message': { title: '飞书', parent: 'message' },
+  '/dingtalk/message': { title: '钉钉', parent: 'message' },
+  '/wechatwork/message': { title: '企业微信', parent: 'message' },
+  '/oa/data': { title: '数据管理', parent: 'oa' },
+  '/alert/overview': { title: '告警概览', parent: 'alert' },
+  '/alert/history': { title: '告警历史', parent: 'alert' },
+  '/alert/config': { title: '告警配置', parent: 'alert' },
+  '/alert/silence': { title: '静默规则', parent: 'alert' },
+  '/alert/escalation': { title: '升级规则', parent: 'alert' },
+  '/cost/overview': { title: '成本概览', parent: 'cost' },
+  '/cost/trend': { title: '成本趋势', parent: 'cost' },
+  '/cost/comparison': { title: '成本对比', parent: 'cost' },
+  '/cost/analysis': { title: '多维分析', parent: 'cost' },
+  '/cost/waste': { title: '资源浪费', parent: 'cost' },
+  '/cost/suggestions': { title: '优化建议', parent: 'cost' },
+  '/cost/alerts': { title: '成本告警', parent: 'cost' },
+  '/cost/budget': { title: '预算管理', parent: 'cost' },
+  '/cost/config': { title: '成本配置', parent: 'cost' },
+  '/logs/center': { title: '日志查看', parent: 'logs' },
+  '/logs/search': { title: '日志搜索', parent: 'logs' },
+  '/logs/stats': { title: '日志统计', parent: 'logs' },
+  '/logs/compare': { title: '日志对比', parent: 'logs' },
+  '/logs/alerts': { title: '日志告警', parent: 'logs' },
+  '/logs/bookmarks': { title: '日志书签', parent: 'logs' },
+  '/logs/viewer': { title: '日志查看器', parent: 'logs' },
+  '/logs/export': { title: '日志导出', parent: 'logs' },
+  '/users': { title: '用户管理', parent: 'system' },
+  '/rbac/roles': { title: '角色权限', parent: 'system' },
+  '/audit/logs': { title: '操作审计', parent: 'system' },
+  '/profile': { title: '个人中心' },
+}
+
+const parentTitles: Record<string, { title: string; path?: string }> = {
+  app: { title: '应用管理' },
+  traffic: { title: '流量治理', path: '/traffic/ratelimit' },
+  pipeline: { title: 'CI/CD 流水线', path: '/pipeline/list' },
+  jenkins: { title: 'Jenkins' },
+  k8s: { title: 'Kubernetes', path: '/k8s/clusters' },
+  approval: { title: '发布审批' },
+  message: { title: '消息通道' },
+  oa: { title: 'OA' },
+  alert: { title: '告警管理' },
+  cost: { title: '成本管理', path: '/cost/overview' },
+  logs: { title: '日志中心', path: '/logs/center' },
+  system: { title: '系统管理' },
+}
+
+const breadcrumbs = computed(() => {
+  const path = route.path
+  const result: { title: string; path?: string }[] = [{ title: '首页', path: '/dashboard' }]
+  
+  // 处理动态路由，如 /pipeline/:id
+  let matchedPath = path
+  const config = breadcrumbMap[path]
+  
+  if (!config) {
+    // 尝试匹配动态路由
+    if (path.match(/^\/pipeline\/\d+$/)) {
+      result.push({ title: 'CI/CD 流水线', path: '/pipeline/list' })
+      result.push({ title: '流水线详情' })
+      return result
+    }
+    if (path.match(/^\/pipeline\/edit\/\d+$/)) {
+      result.push({ title: 'CI/CD 流水线', path: '/pipeline/list' })
+      result.push({ title: '编辑流水线' })
+      return result
+    }
+    if (path.match(/^\/k8s\/clusters\/\d+\/resources$/)) {
+      result.push({ title: 'Kubernetes', path: '/k8s/clusters' })
+      result.push({ title: '资源管理' })
+      return result
+    }
+    if (path.match(/^\/k8s\/clusters\/\d+\/pods$/)) {
+      result.push({ title: 'Kubernetes', path: '/k8s/clusters' })
+      result.push({ title: 'Pod 管理' })
+      return result
+    }
+    if (path.match(/^\/k8s\/clusters\/\d+\/deployments$/)) {
+      result.push({ title: 'Kubernetes', path: '/k8s/clusters' })
+      result.push({ title: 'Deployment 管理' })
+      return result
+    }
+    if (path.match(/^\/jenkins\/instances\/\d+\/jobs$/)) {
+      result.push({ title: 'Jenkins', path: '/jenkins/instances' })
+      result.push({ title: 'Jobs' })
+      return result
+    }
+    if (path.match(/^\/approval\/chains\/\d+\/design$/)) {
+      result.push({ title: '发布审批' })
+      result.push({ title: '审批链管理', path: '/approval/chains' })
+      result.push({ title: '审批链设计' })
+      return result
+    }
+    if (path.match(/^\/approval\/instances\/\d+$/)) {
+      result.push({ title: '发布审批' })
+      result.push({ title: '审批实例', path: '/approval/instances' })
+      result.push({ title: '实例详情' })
+      return result
+    }
+    return result
+  }
+  
+  if (config.parent) {
+    const parent = parentTitles[config.parent]
+    if (parent) {
+      result.push({ title: parent.title, path: parent.path })
+    }
+  }
+  
+  result.push({ title: config.title })
+  return result
+})
+
+// 根据路径获取父菜单 key
+const getParentKey = (path: string): string => {
+  if (path.startsWith('/traffic/')) return 'traffic'
+  if (path.startsWith('/applications') || path.startsWith('/deploys') || path.startsWith('/deploy/check') || path.startsWith('/canary') || path.startsWith('/bluegreen')) return 'app'
+  if (path.startsWith('/pipeline')) return 'pipeline'
+  if (path.startsWith('/jenkins')) return 'jenkins'
+  if (path.startsWith('/k8s') || path.startsWith('/security')) return 'k8s'
+  if (path.startsWith('/approval') || path.startsWith('/deploy/locks')) return 'approval'
+  if (path.startsWith('/feishu') || path.startsWith('/dingtalk') || path.startsWith('/wechatwork')) return 'message'
+  if (path.startsWith('/oa')) return 'oa'
+  if (path.startsWith('/alert')) return 'alert'
+  if (path.startsWith('/cost')) return 'cost'
+  if (path.startsWith('/logs')) return 'logs'
+  if (path.startsWith('/users') || path.startsWith('/rbac') || path.startsWith('/audit') || path.startsWith('/admin')) return 'system'
+  return ''
+}
+
+const openKeys = ref<string[]>([getParentKey(route.path)].filter(Boolean))
+
+const userInfo = computed(() => {
+  const info = localStorage.getItem('userInfo')
+  return info ? JSON.parse(info) : null
+})
+
+watch(() => route.path, (newPath) => {
+  selectedKeys.value = [newPath]
+  const parentKey = getParentKey(newPath)
+  if (parentKey && !openKeys.value.includes(parentKey)) {
+    openKeys.value = [...openKeys.value, parentKey]
+  }
+})
+
+const handleMenuClick = ({ key }: { key: string }) => {
+  router.push(key)
+}
+
+const handleDropdownClick = ({ key }: { key: string }) => {
+  if (key === 'profile') {
+    router.push('/profile')
+  } else if (key === 'logout') {
+    handleLogout()
+  }
+}
+
+const handleLogout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  message.success('已退出登录')
+  router.push('/login')
+}
+</script>
+
+<style scoped>
+.logo {
+  height: 64px;
+  line-height: 64px;
+  text-align: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.trigger {
+  font-size: 18px;
+  line-height: 64px;
+  padding: 0 24px;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.trigger:hover {
+  color: #1890ff;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+</style>

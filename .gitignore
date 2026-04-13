@@ -1,0 +1,38 @@
+# Binaries
+devops.exe
+devops
+main.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Logs
+*.log
+data/requests/
+jenkins/oa-feishu-jenkins/data/requests/
+feishu/pkg/handler/data/requests/
+oa/pkg/handler/data/requests/
+
+# Env
+.env
+
+# IDE
+.vscode/
+.idea/
+.kiro/
+
+# Frontend
+web/node_modules/
+web/dist/
+web/.DS_Store
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+.trae

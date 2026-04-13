@@ -1,0 +1,289 @@
+/* 响应式设计样式 */
+
+/* 移动端优先的断点 */
+:root {
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1600px;
+}
+
+/* 通用响应式容器 */
+.responsive-container {
+  width: 100%;
+  padding-left: 16px;
+  padding-right: 16px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 576px) {
+  .responsive-container {
+    max-width: 540px;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 992px) {
+  .responsive-container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .responsive-container {
+    max-width: 1140px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .responsive-container {
+    max-width: 1540px;
+  }
+}
+
+/* 响应式栅格 */
+.responsive-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(1, 1fr);
+}
+
+@media (min-width: 576px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 992px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .responsive-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* 移动端隐藏 */
+@media (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* 桌面端隐藏 */
+@media (min-width: 768px) {
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+/* 响应式文字大小 */
+.responsive-text-xs {
+  font-size: 12px;
+}
+
+.responsive-text-sm {
+  font-size: 14px;
+}
+
+.responsive-text-base {
+  font-size: 16px;
+}
+
+.responsive-text-lg {
+  font-size: 18px;
+}
+
+.responsive-text-xl {
+  font-size: 20px;
+}
+
+@media (max-width: 767px) {
+  .responsive-text-xs {
+    font-size: 10px;
+  }
+  
+  .responsive-text-sm {
+    font-size: 12px;
+  }
+  
+  .responsive-text-base {
+    font-size: 14px;
+  }
+  
+  .responsive-text-lg {
+    font-size: 16px;
+  }
+  
+  .responsive-text-xl {
+    font-size: 18px;
+  }
+}
+
+/* 响应式间距 */
+.responsive-padding {
+  padding: 16px;
+}
+
+@media (max-width: 767px) {
+  .responsive-padding {
+    padding: 12px;
+  }
+}
+
+.responsive-margin {
+  margin: 16px;
+}
+
+@media (max-width: 767px) {
+  .responsive-margin {
+    margin: 12px;
+  }
+}
+
+/* 响应式卡片 */
+.responsive-card {
+  border-radius: 8px;
+  padding: 20px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 767px) {
+  .responsive-card {
+    padding: 16px;
+    border-radius: 4px;
+  }
+}
+
+/* 响应式表格 */
+.responsive-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  .responsive-table-wrapper table {
+    font-size: 12px;
+  }
+  
+  .responsive-table-wrapper th,
+  .responsive-table-wrapper td {
+    padding: 8px 4px;
+  }
+}
+
+/* 响应式按钮组 */
+.responsive-button-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767px) {
+  .responsive-button-group {
+    flex-direction: column;
+  }
+  
+  .responsive-button-group button {
+    width: 100%;
+  }
+}
+
+/* 响应式表单 */
+.responsive-form {
+  max-width: 100%;
+}
+
+@media (min-width: 768px) {
+  .responsive-form {
+    max-width: 600px;
+  }
+}
+
+/* 响应式侧边栏布局 */
+.responsive-sidebar-layout {
+  display: flex;
+  gap: 16px;
+}
+
+.responsive-sidebar {
+  width: 250px;
+  flex-shrink: 0;
+}
+
+.responsive-content {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 991px) {
+  .responsive-sidebar-layout {
+    flex-direction: column;
+  }
+  
+  .responsive-sidebar {
+    width: 100%;
+  }
+}
+
+/* 响应式图表容器 */
+.responsive-chart {
+  width: 100%;
+  height: 400px;
+}
+
+@media (max-width: 767px) {
+  .responsive-chart {
+    height: 300px;
+  }
+}
+
+/* 响应式模态框 */
+@media (max-width: 767px) {
+  .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px auto !important;
+  }
+  
+  .ant-modal-body {
+    padding: 16px !important;
+  }
+}
+
+/* 响应式抽屉 */
+@media (max-width: 767px) {
+  .ant-drawer-content-wrapper {
+    width: 100% !important;
+  }
+}
+
+/* 响应式分页 */
+@media (max-width: 767px) {
+  .ant-pagination {
+    text-align: center;
+  }
+  
+  .ant-pagination-item,
+  .ant-pagination-prev,
+  .ant-pagination-next {
+    margin: 0 2px;
+  }
+}

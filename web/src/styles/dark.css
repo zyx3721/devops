@@ -1,0 +1,246 @@
+/* 深色模式样式 */
+body.dark-mode {
+  --bg-color: #141414;
+  --bg-secondary: #1f1f1f;
+  --text-color: rgba(255, 255, 255, 0.85);
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --border-color: #303030;
+  --primary-color: #177ddc;
+}
+
+body.dark-mode {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* Ant Design 组件深色适配 */
+body.dark-mode .ant-layout {
+  background: var(--bg-color);
+}
+
+body.dark-mode .ant-layout-content {
+  background: var(--bg-color) !important;
+}
+
+body.dark-mode .ant-layout-header {
+  background: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color);
+}
+
+body.dark-mode .ant-card {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-card-head {
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-table {
+  background: var(--bg-secondary);
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-table-thead > tr > th {
+  background: #1d1d1d !important;
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .ant-table-tbody > tr > td {
+  border-color: var(--border-color);
+}
+
+body.dark-mode .ant-table-tbody > tr:hover > td {
+  background: #262626 !important;
+}
+
+body.dark-mode .ant-modal-content {
+  background: var(--bg-secondary);
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-modal-header {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .ant-modal-title {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-drawer-content {
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .ant-drawer-header {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .ant-drawer-title {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-input {
+  background: #1d1d1d;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-input:hover,
+body.dark-mode .ant-input:focus {
+  border-color: var(--primary-color);
+}
+
+body.dark-mode .ant-select-selector {
+  background: #1d1d1d !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+
+body.dark-mode .ant-select-dropdown {
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .ant-select-item {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-select-item-option-active {
+  background: #262626;
+}
+
+body.dark-mode .ant-select-item-option-selected {
+  background: #111b26;
+}
+
+body.dark-mode .ant-btn-default {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-btn-default:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+body.dark-mode .ant-descriptions-item-label {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .ant-descriptions-item-content {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-descriptions-bordered .ant-descriptions-item-label,
+body.dark-mode .ant-descriptions-bordered .ant-descriptions-item-content {
+  border-color: var(--border-color);
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .ant-statistic-title {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .ant-statistic-content {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-breadcrumb-link,
+body.dark-mode .ant-breadcrumb-separator {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .ant-breadcrumb-link a {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-page-header {
+  background: transparent;
+}
+
+body.dark-mode .ant-page-header-heading-title {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-page-header-heading-sub-title {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .ant-form-item-label > label {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-tabs-tab {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--primary-color);
+}
+
+body.dark-mode .ant-divider {
+  border-color: var(--border-color);
+}
+
+body.dark-mode .ant-empty-description {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .ant-list-item {
+  border-color: var(--border-color);
+}
+
+body.dark-mode .ant-list-item-meta-title {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-list-item-meta-description {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .ant-popover-inner {
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .ant-popover-message-title {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-dropdown-menu {
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .ant-dropdown-menu-item {
+  color: var(--text-color);
+}
+
+body.dark-mode .ant-dropdown-menu-item:hover {
+  background: #262626;
+}
+
+/* 自定义组件适配 */
+body.dark-mode .batch-actions {
+  background: #111b26;
+  border-color: #153450;
+}
+
+body.dark-mode .favorite-dropdown {
+  background: var(--bg-secondary);
+}
+
+body.dark-mode .favorite-item:hover {
+  background: #262626;
+}
+
+body.dark-mode .favorite-item-icon {
+  background: #111b26;
+}
+
+body.dark-mode .favorite-item-type {
+  color: var(--text-secondary);
+}

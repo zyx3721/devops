@@ -1,0 +1,509 @@
+basePath: /app/api/v1
+definitions:
+  dto.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      role:
+        enum:
+        - admin
+        - user
+        - viewer
+        type: string
+      status:
+        enum:
+        - active
+        - inactive
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - role
+    - status
+    - username
+    type: object
+  dto.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  dto.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  dto.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      last_login_at:
+        type: string
+      phone:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  models.Application:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      description:
+        type: string
+      display_name:
+        type: string
+      framework:
+        description: gin, spring, django, express, etc.
+        type: string
+      git_repo:
+        type: string
+      id:
+        type: integer
+      jenkins_instance_id:
+        type: integer
+      jenkins_job_name:
+        type: string
+      k8s_cluster_id:
+        type: integer
+      k8s_deployment:
+        type: string
+      k8s_namespace:
+        type: string
+      language:
+        description: go, java, python, nodejs, etc.
+        type: string
+      name:
+        type: string
+      notify_app_id:
+        type: integer
+      notify_platform:
+        description: feishu, dingtalk, wechatwork
+        type: string
+      notify_receive_id:
+        type: string
+      notify_receive_type:
+        type: string
+      owner:
+        description: 负责人
+        type: string
+      status:
+        type: string
+      team:
+        description: 所属团队
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.ApplicationEnv:
+    properties:
+      application_id:
+        type: integer
+      branch:
+        type: string
+      config:
+        description: 环境特定配置 JSON
+        type: string
+      created_at:
+        type: string
+      env_name:
+        description: dev, test, staging, prod
+        type: string
+      id:
+        type: integer
+      jenkins_job:
+        type: string
+      k8s_deployment:
+        type: string
+      k8s_namespace:
+        type: string
+      replicas:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  response.PageData:
+    properties:
+      list: {}
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@devops.local
+    name: API Support
+  description: DevOps 平台 API 文档，提供 Jenkins、K8s、消息通知、告警等功能的接口
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: DevOps 统一运维平台 API
+  version: "1.0"
+paths:
+  /app:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取应用列表，支持按名称、团队、状态、语言筛选
+      parameters:
+      - description: 应用名称
+        in: query
+        name: name
+        type: string
+      - description: 团队
+        in: query
+        name: team
+        type: string
+      - description: 状态
+        in: query
+        name: status
+        type: string
+      - description: 开发语言
+        in: query
+        name: language
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PageData'
+              type: object
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取应用列表
+      tags:
+      - 应用管理
+  /app/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 根据ID获取应用详情及环境配置
+      parameters:
+      - description: 应用ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  properties:
+                    app:
+                      $ref: '#/definitions/models.Application'
+                    envs:
+                      items:
+                        $ref: '#/definitions/models.ApplicationEnv'
+                      type: array
+                  type: object
+              type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 应用不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取应用详情
+      tags:
+      - 应用管理
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 用户登录获取 JWT Token
+      parameters:
+      - description: 登录请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登录成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  properties:
+                    token:
+                      type: string
+                    user:
+                      properties:
+                        email:
+                          type: string
+                        id:
+                          type: integer
+                        role:
+                          type: string
+                        username:
+                          type: string
+                      type: object
+                  type: object
+              type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: 用户名或密码错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: 账户已被禁用
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户登录
+      tags:
+      - 认证
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 注册新用户
+      parameters:
+      - description: 注册请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 注册成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  properties:
+                    email:
+                      type: string
+                    id:
+                      type: integer
+                    username:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: 参数错误或用户名已存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 用户注册
+      tags:
+      - 认证
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取用户列表，支持按用户名、角色、状态筛选
+      parameters:
+      - description: 用户名
+        in: query
+        name: username
+        type: string
+      - description: 角色
+        in: query
+        name: role
+        type: string
+      - description: 状态
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PageData'
+              type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取用户列表
+      tags:
+      - 用户管理
+    post:
+      consumes:
+      - application/json
+      description: 创建新用户
+      parameters:
+      - description: 创建用户请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserResponse'
+              type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建用户
+      tags:
+      - 用户管理
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 根据ID获取用户详情
+      parameters:
+      - description: 用户ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UserResponse'
+              type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 用户不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取用户详情
+      tags:
+      - 用户管理
+securityDefinitions:
+  BearerAuth:
+    description: 输入 Bearer {token}
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
