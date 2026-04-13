@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -112,14 +111,15 @@ func parseToken(tokenString string) (*Claims, error) {
 }
 
 // GenerateToken 生成JWT token
-func GenerateToken(userID uint, username, role string, secret string) (string, error) {
+// @param expirationHours int token 有效期（小时）
+func GenerateToken(userID uint, username, role string, secret string, expirationHours int) (string, error) {
 	secretBytes := []byte(secret)
 	if len(secretBytes) == 0 {
 		return "", apperrors.New(apperrors.ErrCodeInternalError, "JWT密钥未配置")
 	}
 
 	nowTime := time.Now()
-	expireTime := nowTime.Add(24 * time.Hour)
+	expireTime := nowTime.Add(time.Duration(expirationHours) * time.Hour)
 
 	claims := Claims{
 		UserID:   userID,
@@ -164,7 +164,7 @@ func GetRole(c *gin.Context) (string, bool) {
 	}
 	roleStr, ok := role.(string)
 	if !ok {
-		fmt.Printf("GetRole: role is not string, type=%T\n", role)
+		logger.L().Warn("GetRole: role is not string, type=%T", role)
 		return "", false
 	}
 	return roleStr, true
