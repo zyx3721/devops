@@ -13,19 +13,32 @@ import (
 // ========== 用户管理 ==========
 
 // SearchUser 搜索用户
-// 优先使用 user_access_token（支持按姓名搜索），降级使用 tenant_access_token
+// 优先使用 user_access_token（支持按姓名搜索），同时尝试手机号/邮箱精确匹配
 func (c *Client) SearchUser(ctx context.Context, query string) ([]map[string]any, error) {
 	c.logger.Debug("Searching user with query: %s", query)
 
+	// 内存中没有 token 时，尝试从数据库重新加载
+	if !c.HasUserToken() {
+		c.LoadTokenFromDB()
+	}
+
+	// 先尝试手机号/邮箱精确匹配（tenant token，不依赖 user token）
+	exactResults, err := c.searchUserByEmailOrMobile(ctx, query)
+	if err == nil && len(exactResults) > 0 {
+		c.logger.Info("Found %d users via email/mobile exact match", len(exactResults))
+		return exactResults, nil
+	}
+
+	// 再尝试 user_access_token 模糊搜索（支持姓名）
 	if c.HasUserToken() {
 		token, err := c.GetUserAccessToken(ctx)
 		if err == nil && token != "" {
 			return c.searchUserWithToken(ctx, query, token)
 		}
-		c.logger.Warn("Failed to get user token, falling back to batch_get_id: %v", err)
+		c.logger.Warn("Failed to get user token, no fallback available: %v", err)
 	}
 
-	return c.searchUserByEmailOrMobile(ctx, query)
+	return []map[string]any{}, nil
 }
 
 // searchUserWithToken 使用 user_access_token 搜索用户
@@ -79,7 +92,17 @@ func (c *Client) searchUserWithToken(ctx context.Context, query, token string) (
 	result := make([]map[string]any, 0, len(users))
 	for _, u := range users {
 		if user, ok := u.(map[string]any); ok {
-			result = append(result, user)
+			// search/v1/user 返回字段有限，调用 GetUserByID 补全邮箱等详细信息
+			if openID, hasID := user["open_id"].(string); hasID && openID != "" {
+				detail, err := c.GetUserByID(ctx, openID, "open_id")
+				if err == nil {
+					result = append(result, detail)
+				} else {
+					result = append(result, user)
+				}
+			} else {
+				result = append(result, user)
+			}
 		}
 	}
 
@@ -144,8 +167,16 @@ func (c *Client) searchUserByEmailOrMobile(ctx context.Context, query string) ([
 	result := make([]map[string]any, 0, len(userList))
 	for _, u := range userList {
 		if user, ok := u.(map[string]any); ok {
-			if _, hasID := user["user_id"]; hasID {
-				result = append(result, user)
+			// 飞书返回字段名为 user_id，值为 open_id 格式（ou_ 开头）
+			if openID, hasID := user["user_id"].(string); hasID && openID != "" {
+				// batch_get_id 只返回 user_id，需要再查详细信息
+				detail, err := c.GetUserByID(ctx, openID, "open_id")
+				if err == nil {
+					result = append(result, detail)
+				} else {
+					// 查详情失败时，至少返回 user_id
+					result = append(result, user)
+				}
 			}
 		}
 	}
