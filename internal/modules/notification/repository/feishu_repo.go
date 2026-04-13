@@ -163,6 +163,7 @@ func (r *FeishuBotRepository) Update(ctx context.Context, bot *models.FeishuBot)
 	return r.db.WithContext(ctx).Model(bot).Where("id = ?", bot.ID).Updates(map[string]interface{}{
 		"name":                bot.Name,
 		"webhook_url":         bot.WebhookURL,
+		"project":             bot.Project,
 		"secret":              bot.Secret,
 		"description":         bot.Description,
 		"status":              bot.Status,
