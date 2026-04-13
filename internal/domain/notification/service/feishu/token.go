@@ -167,6 +167,7 @@ func (c *Client) SetUserToken(userToken, refreshToken string) {
 }
 
 // LoadTokenFromDB 从数据库加载 token
+// 优先按 c.appID 查找，找不到时 fallback 到最新一条记录
 func (c *Client) LoadTokenFromDB() {
 	if c.tokenRepo == nil {
 		return
@@ -174,8 +175,14 @@ func (c *Client) LoadTokenFromDB() {
 
 	token, err := c.tokenRepo.GetByAppID(context.Background(), c.appID)
 	if err != nil {
-		c.logger.Debug("No saved user token found for app %s", c.appID)
-		return
+		c.logger.Debug("No saved user token found for app %s, trying latest", c.appID)
+		// fallback：尝试加载 DB 中最新的一条 token
+		token, err = c.tokenRepo.GetLatest(context.Background())
+		if err != nil {
+			c.logger.Debug("No user token found in database at all")
+			return
+		}
+		c.logger.Info("Loaded user token from database (fallback, app_id=%s)", token.AppID)
 	}
 
 	c.mu.Lock()
