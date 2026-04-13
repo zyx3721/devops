@@ -494,7 +494,7 @@ const messageContentPlaceholder = computed(() => {
     case 'markdown':
       return '示例：\n## 标题\n**加粗文字**\n普通文字\n[链接](https://example.com)'
     case 'textcard':
-      return '示例：\n卡片正文内容，支持 <a href="https://example.com">链接</a>'
+      return '示例：\n你好，这是一条测试消息'
     default:
       return '示例：\n你好，这是一条测试消息'
   }
