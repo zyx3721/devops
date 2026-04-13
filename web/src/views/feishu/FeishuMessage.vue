@@ -129,7 +129,7 @@
                     <a-radio-button value="interactive">卡片</a-radio-button>
                   </a-radio-group>
                 </a-form-item>
-                <a-form-item label="消息内容" required><a-textarea v-model:value="messageForm.content" placeholder="请输入消息内容" :rows="6" /></a-form-item>
+                <a-form-item label="消息内容" required><a-textarea v-model:value="messageForm.content" :placeholder="contentPlaceholder" :rows="6" /></a-form-item>
                 <a-form-item>
                   <a-button type="primary" @click="sendMessage" :loading="sendingMessage" block>
                     <template #icon><SendOutlined /></template>发送消息
@@ -398,7 +398,9 @@
         <a-form-item label="群名称" required><a-input v-model:value="newChatForm.name" placeholder="请输入群名称" /></a-form-item>
         <a-form-item label="群描述"><a-textarea v-model:value="newChatForm.description" placeholder="请输入群描述" :rows="2" /></a-form-item>
         <a-form-item label="初始成员 (User ID)">
-          <a-select v-model:value="newChatForm.userIds" mode="tags" placeholder="输入 User ID 后回车添加" style="width: 100%" />
+          <a-select v-model:value="newChatForm.userIds" mode="multiple" placeholder="从已搜索用户中选择，或输入 User ID 后回车" style="width: 100%">
+            <a-select-option v-for="u in selectedUsers" :key="u.user_id" :value="u.user_id">{{ u.name }}（{{ u.user_id }}）</a-select-option>
+          </a-select>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -410,7 +412,9 @@
           <a-input :value="currentChat?.name" disabled />
         </a-form-item>
         <a-form-item label="成员 (User ID)" required>
-          <a-select v-model:value="addMembersForm.userIds" mode="tags" placeholder="输入 User ID 后回车添加" style="width: 100%" />
+          <a-select v-model:value="addMembersForm.userIds" mode="multiple" placeholder="从已搜索用户中选择，或输入 User ID 后回车" style="width: 100%">
+            <a-select-option v-for="u in selectedUsers" :key="u.user_id" :value="u.user_id">{{ u.name }}（{{ u.user_id }}）</a-select-option>
+          </a-select>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -451,7 +455,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { SendOutlined, PlusOutlined, DeleteOutlined, ReloadOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, LinkOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue'
 import { feishuApi, feishuAppApi, feishuBotApi, feishuCallbackApi, feishuLogApi, feishuUserApi, feishuChatApi, type FeishuApp, type FeishuBot, type FeishuMessageLog, type FeishuUser, type FeishuChat } from '@/services/feishu'
@@ -482,6 +486,7 @@ const appList = ref<FeishuApp[]>([])
 const botList = ref<FeishuBot[]>([])
 const logList = ref<FeishuMessageLog[]>([])
 const userList = ref<FeishuUser[]>([])
+const selectedUsers = ref<FeishuUser[]>([])
 const chatList = ref<FeishuChat[]>([])
 const currentLog = ref<FeishuMessageLog | null>(null)
 const currentChat = ref<FeishuChat | null>(null)
@@ -546,7 +551,18 @@ const chatColumns = [
   { title: '操作', key: 'action', width: 120 }
 ]
 
-const messageForm = reactive({ receive_id: '', receive_id_type: 'chat_id' as const, msg_type: 'text' as const, content: '' })
+const messageForm = reactive({ receive_id: '', receive_id_type: 'chat_id' as string, msg_type: 'text' as string, content: '' })
+
+const contentPlaceholder = computed(() => {
+  switch (messageForm.msg_type) {
+    case 'post':
+      return `示例：\n{\n  "zh_cn": {\n    "title": "消息标题",\n    "content": [\n      [\n        {"tag": "text", "text": "普通文字，"},\n        {"tag": "a", "text": "点击跳转", "href": "https://example.com"}\n      ]\n    ]\n  }\n}`
+    case 'interactive':
+      return `示例：\n{\n  "schema": "2.0",\n  "header": {\n    "title": {"content": "卡片标题", "tag": "plain_text"},\n    "template": "blue"\n  },\n  "body": {\n    "elements": [\n      {"tag": "markdown", "content": "**加粗文字**\\n普通文字"}\n    ]\n  }\n}`
+    default:
+      return '示例：\n你好，这是一条测试消息'
+  }
+})
 const cardForm = reactive({ receive_id: '', receive_id_type: 'chat_id' as const, title: '应用发布申请', services: [{ name: '', object_id: '', actions: [] as string[] }] })
 
 const isCallbackRunning = (appId: string) => runningCallbacks.value.includes(appId)
@@ -755,7 +771,9 @@ const searchUsers = async () => {
 
 const selectUserForChat = (user: FeishuUser) => {
   if (user.user_id) {
-    newChatForm.userIds.push(user.user_id)
+    if (!selectedUsers.value.find(u => u.user_id === user.user_id)) {
+      selectedUsers.value.push(user)
+    }
     message.success(`已添加用户: ${user.name}`)
   }
 }
@@ -773,7 +791,6 @@ const fetchChats = async () => {
 const showCreateChatModal = () => {
   newChatForm.name = ''
   newChatForm.description = ''
-  newChatForm.userIds = []
   createChatModalVisible.value = true
 }
 
