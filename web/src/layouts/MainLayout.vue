@@ -1,6 +1,6 @@
 <template>
-  <a-layout style="min-height: 100vh">
-    <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible theme="dark" width="200">
+  <a-layout style="min-height: 100vh" class="main-layout">
+    <a-layout-sider v-model:collapsed="collapsed" :trigger="null" collapsible theme="dark" width="200" class="fixed-sider" :style="{ background: 'linear-gradient(180deg, #1a2332 0%, #2c3e50 50%, #34495e 100%)' }">
       <div class="logo">
         <!-- 使用 v-show 替代 v-if 以避免重复渲染 -->
         <span v-show="!collapsed">DevOps 管理系统</span>
@@ -56,7 +56,7 @@
       </a-menu>
     </a-layout-sider>
 
-    <a-layout>
+    <a-layout class="content-layout">
       <a-layout-header style="background: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between">
         <div class="trigger" @click="collapsed = !collapsed">
           <MenuUnfoldOutlined v-if="collapsed" />
@@ -739,6 +739,62 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
+/* 左侧栏固定布局 */
+:deep(.ant-layout-sider) {
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  background: linear-gradient(180deg, #1a2332 0%, #2c3e50 50%, #34495e 100%) !important;
+}
+
+/* 隐藏左侧栏滚动条 */
+:deep(.ant-layout-sider)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+:deep(.ant-layout-sider) {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+/* 菜单背景透明，显示渐变色 */
+:deep(.ant-menu-dark) {
+  background: transparent !important;
+}
+
+:deep(.ant-menu-dark .ant-menu-sub) {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 菜单项悬停效果 */
+:deep(.ant-menu-dark .ant-menu-item:hover),
+:deep(.ant-menu-dark .ant-menu-submenu-title:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 菜单项选中效果 */
+:deep(.ant-menu-dark .ant-menu-item-selected) {
+  background: linear-gradient(90deg, rgba(24, 144, 255, 0.3) 0%, rgba(24, 144, 255, 0.1) 100%) !important;
+  border-right: 3px solid #1890ff;
+}
+
+/* 主内容区域左侧留出空间 */
+.content-layout {
+  margin-left: 200px;
+  transition: margin-left 0.2s;
+}
+
+/* 侧边栏折叠时调整主内容区域 */
+:deep(.ant-layout-sider-collapsed) ~ .content-layout {
+  margin-left: 80px;
+}
+
 .logo {
   height: 64px;
   line-height: 64px;
@@ -748,6 +804,14 @@ const handleLogout = () => {
   font-weight: bold;
   white-space: nowrap;
   overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.2);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 菜单区域可滚动 */
+:deep(.ant-menu) {
+  border-right: 0;
 }
 
 .trigger {
@@ -772,27 +836,27 @@ const handleLogout = () => {
   .logo {
     font-size: 16px;
   }
-  
+
   .trigger {
     padding: 0 16px;
   }
-  
+
   :deep(.ant-layout-header) {
     padding: 0 16px !important;
   }
-  
+
   :deep(.ant-layout-content) {
     margin: 8px !important;
   }
-  
+
   :deep(.ant-layout-content > div) {
     padding: 16px !important;
   }
-  
+
   :deep(.ant-breadcrumb) {
     margin-bottom: 8px !important;
   }
-  
+
   /* 移动端侧边栏覆盖在内容上方 */
   :deep(.ant-layout-sider) {
     position: fixed !important;
@@ -801,12 +865,16 @@ const handleLogout = () => {
     bottom: 0;
     z-index: 999;
   }
-  
+
   /* 侧边栏折叠时不占用空间 */
   :deep(.ant-layout-sider-collapsed) {
     transform: translateX(-100%);
   }
-  
+
+  .content-layout {
+    margin-left: 0 !important;
+  }
+
   /* 侧边栏展开时显示遮罩 */
   :deep(.ant-layout-sider:not(.ant-layout-sider-collapsed))::before {
     content: '';
@@ -825,11 +893,19 @@ const handleLogout = () => {
   .logo {
     font-size: 16px;
   }
-  
+
   :deep(.ant-layout-sider) {
     width: 180px !important;
     min-width: 180px !important;
     max-width: 180px !important;
+  }
+
+  .content-layout {
+    margin-left: 180px;
+  }
+
+  :deep(.ant-layout-sider-collapsed) ~ .content-layout {
+    margin-left: 80px;
   }
 }
 </style>
