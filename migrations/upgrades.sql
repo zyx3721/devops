@@ -212,80 +212,120 @@ ALTER TABLE `message_templates`
 -- ============================================
 -- 9. 数据库表结构与 Go Model 一致性修复补丁
 -- ============================================
+-- 注意：以下补丁已合并到 init_tables.sql（2026-04-14）
+-- 全新部署无需执行此节，仅对存量数据库执行
 
--- 9.1 创建缺失的流水线相关表
-CREATE TABLE IF NOT EXISTS `artifact_registries` (
+-- 9.1 修复 k8s_clusters 表字段
+ALTER TABLE `k8s_clusters`
+  DROP COLUMN IF EXISTS `api_server`,
+  DROP COLUMN IF EXISTS `token`,
+  DROP COLUMN IF EXISTS `ca_cert`;
+
+ALTER TABLE `k8s_clusters`
+  ADD COLUMN IF NOT EXISTS `namespace` varchar(100) DEFAULT 'default' NOT NULL COMMENT '默认命名空间' AFTER `kubeconfig`,
+  ADD COLUMN IF NOT EXISTS `registry` varchar(500) DEFAULT '' COMMENT '镜像仓库地址' AFTER `namespace`,
+  ADD COLUMN IF NOT EXISTS `repository` varchar(200) DEFAULT '' COMMENT '镜像仓库名称' AFTER `registry`,
+  ADD COLUMN IF NOT EXISTS `insecure_skip_tls` tinyint(1) DEFAULT 0 COMMENT '跳过 TLS 证书验证' AFTER `is_default`,
+  ADD COLUMN IF NOT EXISTS `check_timeout` int DEFAULT 180 NOT NULL COMMENT '健康检查超时时间(秒)' AFTER `insecure_skip_tls`,
+  ADD COLUMN IF NOT EXISTS `updated_by` bigint unsigned DEFAULT NULL COMMENT '更新者ID' AFTER `created_by`;
+
+CREATE INDEX IF NOT EXISTS `idx_k8s_updated_by` ON `k8s_clusters`(`updated_by`);
+
+-- 9.2 重建 feishu_requests 表
+DROP TABLE IF EXISTS `feishu_requests`;
+CREATE TABLE `feishu_requests` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   `deleted_at` datetime(3) DEFAULT NULL,
-  `name` varchar(100) NOT NULL COMMENT '仓库名称',
-  `type` varchar(50) NOT NULL COMMENT '仓库类型: docker/maven/npm',
-  `url` varchar(500) NOT NULL COMMENT '仓库地址',
-  `username` varchar(100) DEFAULT NULL COMMENT '用户名',
-  `password` varchar(500) DEFAULT NULL COMMENT '密码',
-  `description` text COMMENT '描述',
+  `request_id` varchar(100) NOT NULL COMMENT '请求ID',
+  `original_request` text COMMENT '原始请求内容',
+  `disabled_actions` text COMMENT '禁用的操作',
+  `action_counts` text COMMENT '操作计数',
   PRIMARY KEY (`id`),
-  KEY `idx_ar_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='制品仓库';
+  UNIQUE KEY `idx_fr_request_id` (`request_id`),
+  KEY `idx_fr_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='飞书请求记录';
 
-CREATE TABLE IF NOT EXISTS `build_jobs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-  `deleted_at` datetime(3) DEFAULT NULL,
-  `name` varchar(100) NOT NULL COMMENT '构建任务名称',
-  `pipeline_id` bigint unsigned NOT NULL COMMENT '流水线ID',
-  `status` varchar(50) DEFAULT 'pending' COMMENT '状态',
-  `start_time` datetime(3) DEFAULT NULL COMMENT '开始时间',
-  `end_time` datetime(3) DEFAULT NULL COMMENT '结束时间',
-  PRIMARY KEY (`id`),
-  KEY `idx_bj_pipeline_id` (`pipeline_id`),
-  KEY `idx_bj_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='构建任务';
+-- 9.3 修复 application_envs 表
+ALTER TABLE `application_envs`
+  CHANGE COLUMN `env` `env_name` varchar(50) NOT NULL COMMENT '环境名称';
 
-CREATE TABLE IF NOT EXISTS `build_workspaces` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-  `deleted_at` datetime(3) DEFAULT NULL,
-  `name` varchar(100) NOT NULL COMMENT '工作空间名称',
-  `path` varchar(500) NOT NULL COMMENT '工作空间路径',
-  `build_job_id` bigint unsigned NOT NULL COMMENT '构建任务ID',
-  PRIMARY KEY (`id`),
-  KEY `idx_bw_build_job_id` (`build_job_id`),
-  KEY `idx_bw_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='构建工作空间';
+ALTER TABLE `application_envs`
+  DROP COLUMN IF EXISTS `jenkins_instance_id`,
+  DROP COLUMN IF EXISTS `k8s_cluster_id`;
 
-CREATE TABLE IF NOT EXISTS `git_repositories` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-  `deleted_at` datetime(3) DEFAULT NULL,
-  `name` varchar(100) NOT NULL COMMENT '仓库名称',
-  `url` varchar(500) NOT NULL COMMENT '仓库地址',
-  `branch` varchar(100) DEFAULT 'main' COMMENT '分支',
-  `username` varchar(100) DEFAULT NULL COMMENT '用户名',
-  `password` varchar(500) DEFAULT NULL COMMENT '密码',
-  PRIMARY KEY (`id`),
-  KEY `idx_gr_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Git仓库';
+ALTER TABLE `application_envs`
+  ADD COLUMN IF NOT EXISTS `branch` varchar(100) DEFAULT '' COMMENT 'Git 分支' AFTER `env_name`;
 
-CREATE TABLE IF NOT EXISTS `pipeline_credentials` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-  `deleted_at` datetime(3) DEFAULT NULL,
-  `name` varchar(100) NOT NULL COMMENT '凭证名称',
-  `type` varchar(50) NOT NULL COMMENT '凭证类型: username_password/ssh_key/token',
-  `username` varchar(100) DEFAULT NULL COMMENT '用户名',
-  `password` varchar(500) DEFAULT NULL COMMENT '密码',
-  `private_key` text COMMENT '私钥',
-  `description` text COMMENT '描述',
-  PRIMARY KEY (`id`),
-  KEY `idx_pc_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流水线凭证';
+-- 9.4 修复 artifact_repositories 表
+ALTER TABLE `artifact_repositories`
+  DROP COLUMN IF EXISTS `check_status`,
+  DROP COLUMN IF EXISTS `check_message`,
+  DROP COLUMN IF EXISTS `check_latency_ms`,
+  DROP COLUMN IF EXISTS `total_images`,
+  DROP COLUMN IF EXISTS `total_size_bytes`;
 
+ALTER TABLE `artifact_repositories`
+  ADD COLUMN IF NOT EXISTS `connection_status` varchar(20) DEFAULT 'unknown' COMMENT '连接状态' AFTER `enabled`,
+  ADD COLUMN IF NOT EXISTS `last_error` text COMMENT '最后错误信息' AFTER `last_check_at`,
+  ADD COLUMN IF NOT EXISTS `enable_monitoring` tinyint(1) DEFAULT 1 COMMENT '是否启用监控' AFTER `last_error`,
+  ADD COLUMN IF NOT EXISTS `check_interval` int DEFAULT 300 COMMENT '检查间隔(秒)' AFTER `enable_monitoring`;
+
+CREATE INDEX IF NOT EXISTS `idx_connection_status` ON `artifact_repositories`(`connection_status`);
+CREATE INDEX IF NOT EXISTS `idx_enable_monitoring` ON `artifact_repositories`(`enable_monitoring`);
+
+-- 9.5 修复 artifacts 表字段名
+ALTER TABLE `artifacts`
+  CHANGE COLUMN `download_cnt` `download_count` bigint DEFAULT 0 COMMENT '下载次数',
+  CHANGE COLUMN `latest_version` `latest_ver` varchar(100) DEFAULT NULL COMMENT '最新版本';
+
+-- 9.6 修复 artifact_versions 表字段名
+ALTER TABLE `artifact_versions`
+  CHANGE COLUMN `download_cnt` `download_count` bigint DEFAULT 0 COMMENT '下载次数';
+
+-- 9.7 修复 alert_histories 表
+ALTER TABLE `alert_histories`
+  DROP COLUMN IF EXISTS `config_name`,
+  DROP COLUMN IF EXISTS `target`,
+  DROP COLUMN IF EXISTS `details`,
+  DROP COLUMN IF EXISTS `notified`,
+  DROP COLUMN IF EXISTS `notified_at`;
+
+ALTER TABLE `alert_histories`
+  ADD COLUMN IF NOT EXISTS `title` varchar(200) DEFAULT '' COMMENT '标题' AFTER `type`,
+  ADD COLUMN IF NOT EXISTS `content` text COMMENT '内容' AFTER `title`,
+  ADD COLUMN IF NOT EXISTS `level` varchar(20) DEFAULT 'warning' COMMENT '级别' AFTER `content`,
+  ADD COLUMN IF NOT EXISTS `ack_status` varchar(20) DEFAULT 'pending' COMMENT '确认状态' AFTER `status`,
+  ADD COLUMN IF NOT EXISTS `ack_by` bigint unsigned DEFAULT NULL COMMENT '确认人ID' AFTER `ack_status`,
+  ADD COLUMN IF NOT EXISTS `ack_at` datetime(3) DEFAULT NULL COMMENT '确认时间' AFTER `ack_by`,
+  ADD COLUMN IF NOT EXISTS `resolved_by` bigint unsigned DEFAULT NULL COMMENT '解决人ID' AFTER `ack_at`,
+  ADD COLUMN IF NOT EXISTS `resolved_at` datetime(3) DEFAULT NULL COMMENT '解决时间' AFTER `resolved_by`,
+  ADD COLUMN IF NOT EXISTS `resolve_comment` text COMMENT '解决备注' AFTER `resolved_at`,
+  ADD COLUMN IF NOT EXISTS `silenced` tinyint(1) DEFAULT 0 COMMENT '是否被静默' AFTER `resolve_comment`,
+  ADD COLUMN IF NOT EXISTS `silence_id` bigint unsigned DEFAULT NULL COMMENT '静默规则ID' AFTER `silenced`,
+  ADD COLUMN IF NOT EXISTS `escalated` tinyint(1) DEFAULT 0 COMMENT '是否已升级' AFTER `silence_id`,
+  ADD COLUMN IF NOT EXISTS `escalation_id` bigint unsigned DEFAULT NULL COMMENT '升级规则ID' AFTER `escalated`,
+  ADD COLUMN IF NOT EXISTS `error_msg` text COMMENT '错误信息' AFTER `escalation_id`,
+  ADD COLUMN IF NOT EXISTS `source_id` varchar(100) DEFAULT '' COMMENT '来源ID' AFTER `error_msg`,
+  ADD COLUMN IF NOT EXISTS `source_url` varchar(500) DEFAULT '' COMMENT '来源URL' AFTER `source_id`;
+
+-- 9.8 修复其他表
+ALTER TABLE `dingtalk_bots`
+  DROP COLUMN IF EXISTS `project`,
+  DROP COLUMN IF EXISTS `message_template_id`;
+
+CREATE INDEX IF NOT EXISTS `idx_wwb_created_by` ON `wechat_work_bots`(`created_by`);
+
+ALTER TABLE `feishu_apps`
+  MODIFY COLUMN `project` varchar(100) NOT NULL COMMENT '所属项目',
+  MODIFY COLUMN `description` text COMMENT '描述',
+  MODIFY COLUMN `status` varchar(20) NOT NULL COMMENT '状态: active/inactive';
+
+ALTER TABLE `feishu_bots`
+  MODIFY COLUMN `secret` varchar(100) DEFAULT '' COMMENT '签名密钥';
+
+-- 9.9 创建缺失的流水线相关表
 CREATE TABLE IF NOT EXISTS `pipeline_runs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
