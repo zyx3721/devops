@@ -208,3 +208,270 @@ ALTER TABLE `message_templates`
 -- 修正 created_by 允许 NULL（模型为 *uint）
 ALTER TABLE `message_templates`
   MODIFY COLUMN `created_by` bigint unsigned DEFAULT NULL;
+
+-- ============================================
+-- 9. 数据库表结构与 Go Model 一致性修复补丁
+-- ============================================
+
+-- 9.1 创建缺失的流水线相关表
+CREATE TABLE IF NOT EXISTS `artifact_registries` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `name` varchar(100) NOT NULL COMMENT '仓库名称',
+  `type` varchar(50) NOT NULL COMMENT '仓库类型: docker/maven/npm',
+  `url` varchar(500) NOT NULL COMMENT '仓库地址',
+  `username` varchar(100) DEFAULT NULL COMMENT '用户名',
+  `password` varchar(500) DEFAULT NULL COMMENT '密码',
+  `description` text COMMENT '描述',
+  PRIMARY KEY (`id`),
+  KEY `idx_ar_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='制品仓库';
+
+CREATE TABLE IF NOT EXISTS `build_jobs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `name` varchar(100) NOT NULL COMMENT '构建任务名称',
+  `pipeline_id` bigint unsigned NOT NULL COMMENT '流水线ID',
+  `status` varchar(50) DEFAULT 'pending' COMMENT '状态',
+  `start_time` datetime(3) DEFAULT NULL COMMENT '开始时间',
+  `end_time` datetime(3) DEFAULT NULL COMMENT '结束时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_bj_pipeline_id` (`pipeline_id`),
+  KEY `idx_bj_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='构建任务';
+
+CREATE TABLE IF NOT EXISTS `build_workspaces` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `name` varchar(100) NOT NULL COMMENT '工作空间名称',
+  `path` varchar(500) NOT NULL COMMENT '工作空间路径',
+  `build_job_id` bigint unsigned NOT NULL COMMENT '构建任务ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_bw_build_job_id` (`build_job_id`),
+  KEY `idx_bw_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='构建工作空间';
+
+CREATE TABLE IF NOT EXISTS `git_repositories` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `name` varchar(100) NOT NULL COMMENT '仓库名称',
+  `url` varchar(500) NOT NULL COMMENT '仓库地址',
+  `branch` varchar(100) DEFAULT 'main' COMMENT '分支',
+  `username` varchar(100) DEFAULT NULL COMMENT '用户名',
+  `password` varchar(500) DEFAULT NULL COMMENT '密码',
+  PRIMARY KEY (`id`),
+  KEY `idx_gr_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Git仓库';
+
+CREATE TABLE IF NOT EXISTS `pipeline_credentials` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `name` varchar(100) NOT NULL COMMENT '凭证名称',
+  `type` varchar(50) NOT NULL COMMENT '凭证类型: username_password/ssh_key/token',
+  `username` varchar(100) DEFAULT NULL COMMENT '用户名',
+  `password` varchar(500) DEFAULT NULL COMMENT '密码',
+  `private_key` text COMMENT '私钥',
+  `description` text COMMENT '描述',
+  PRIMARY KEY (`id`),
+  KEY `idx_pc_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流水线凭证';
+
+CREATE TABLE IF NOT EXISTS `pipeline_runs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `pipeline_id` bigint unsigned NOT NULL COMMENT '流水线ID',
+  `run_number` int NOT NULL COMMENT '运行编号',
+  `status` varchar(50) DEFAULT 'pending' COMMENT '状态: pending/running/success/failed/cancelled',
+  `trigger_type` varchar(50) DEFAULT 'manual' COMMENT '触发类型: manual/webhook/schedule',
+  `trigger_user` varchar(100) DEFAULT NULL COMMENT '触发用户',
+  `start_time` datetime(3) DEFAULT NULL COMMENT '开始时间',
+  `end_time` datetime(3) DEFAULT NULL COMMENT '结束时间',
+  `duration` int DEFAULT 0 COMMENT '持续时间(秒)',
+  PRIMARY KEY (`id`),
+  KEY `idx_pr_pipeline_id` (`pipeline_id`),
+  KEY `idx_pr_status` (`status`),
+  KEY `idx_pr_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流水线运行记录';
+
+CREATE TABLE IF NOT EXISTS `pipeline_variables` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `pipeline_id` bigint unsigned NOT NULL COMMENT '流水线ID',
+  `key` varchar(100) NOT NULL COMMENT '变量名',
+  `value` text COMMENT '变量值',
+  `is_secret` tinyint(1) DEFAULT 0 COMMENT '是否为敏感信息',
+  `description` text COMMENT '描述',
+  PRIMARY KEY (`id`),
+  KEY `idx_pv_pipeline_id` (`pipeline_id`),
+  KEY `idx_pv_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流水线变量';
+
+CREATE TABLE IF NOT EXISTS `stage_runs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `pipeline_run_id` bigint unsigned NOT NULL COMMENT '流水线运行ID',
+  `stage_name` varchar(100) NOT NULL COMMENT '阶段名称',
+  `status` varchar(50) DEFAULT 'pending' COMMENT '状态',
+  `start_time` datetime(3) DEFAULT NULL COMMENT '开始时间',
+  `end_time` datetime(3) DEFAULT NULL COMMENT '结束时间',
+  `duration` int DEFAULT 0 COMMENT '持续时间(秒)',
+  PRIMARY KEY (`id`),
+  KEY `idx_sr_pipeline_run_id` (`pipeline_run_id`),
+  KEY `idx_sr_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='阶段运行记录';
+
+CREATE TABLE IF NOT EXISTS `step_runs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `stage_run_id` bigint unsigned NOT NULL COMMENT '阶段运行ID',
+  `step_name` varchar(100) NOT NULL COMMENT '步骤名称',
+  `status` varchar(50) DEFAULT 'pending' COMMENT '状态',
+  `start_time` datetime(3) DEFAULT NULL COMMENT '开始时间',
+  `end_time` datetime(3) DEFAULT NULL COMMENT '结束时间',
+  `duration` int DEFAULT 0 COMMENT '持续时间(秒)',
+  `logs` longtext COMMENT '日志',
+  PRIMARY KEY (`id`),
+  KEY `idx_sr_stage_run_id` (`stage_run_id`),
+  KEY `idx_sr_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='步骤运行记录';
+
+CREATE TABLE IF NOT EXISTS `webhook_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` datetime(3) DEFAULT NULL,
+  `webhook_id` bigint unsigned NOT NULL COMMENT 'Webhook ID',
+  `request_method` varchar(20) NOT NULL COMMENT '请求方法',
+  `request_headers` text COMMENT '请求头',
+  `request_body` longtext COMMENT '请求体',
+  `response_status` int DEFAULT NULL COMMENT '响应状态码',
+  `response_body` text COMMENT '响应体',
+  `error_message` text COMMENT '错误信息',
+  PRIMARY KEY (`id`),
+  KEY `idx_wl_webhook_id` (`webhook_id`),
+  KEY `idx_wl_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Webhook日志';
+
+-- 9.2 为现有表添加缺失字段
+
+-- alert_histories 表
+ALTER TABLE `alert_histories` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_ah_deleted_at` ON `alert_histories`(`deleted_at`);
+
+-- artifacts 表
+ALTER TABLE `artifacts` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_artifacts_deleted_at` ON `artifacts`(`deleted_at`);
+
+-- pipelines 表
+ALTER TABLE `pipelines` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_pipelines_deleted_at` ON `pipelines`(`deleted_at`);
+
+-- health_check_configs 表
+ALTER TABLE `health_check_configs` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_hcc_deleted_at` ON `health_check_configs`(`deleted_at`);
+
+-- health_check_histories 表
+ALTER TABLE `health_check_histories` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_hch_deleted_at` ON `health_check_histories`(`deleted_at`);
+
+-- app_retry_rules 表
+ALTER TABLE `app_retry_rules` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_arr_deleted_at` ON `app_retry_rules`(`deleted_at`);
+
+-- app_timeout_rules 表
+ALTER TABLE `app_timeout_rules` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_atr_deleted_at` ON `app_timeout_rules`(`deleted_at`);
+
+-- app_circuit_breaker_rules 表
+ALTER TABLE `app_circuit_breaker_rules` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_acbr_deleted_at` ON `app_circuit_breaker_rules`(`deleted_at`);
+
+-- app_rate_limit_rules 表
+ALTER TABLE `app_rate_limit_rules` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_arlr_deleted_at` ON `app_rate_limit_rules`(`deleted_at`);
+
+-- app_mirror_rules 表
+ALTER TABLE `app_mirror_rules` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_amr_deleted_at` ON `app_mirror_rules`(`deleted_at`);
+
+-- app_fault_rules 表
+ALTER TABLE `app_fault_rules` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_afr_deleted_at` ON `app_fault_rules`(`deleted_at`);
+
+-- cost_alerts 表
+ALTER TABLE `cost_alerts` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_ca_deleted_at` ON `cost_alerts`(`deleted_at`);
+
+-- cost_budgets 表
+ALTER TABLE `cost_budgets` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_cb_deleted_at` ON `cost_budgets`(`deleted_at`);
+
+-- cost_suggestions 表
+ALTER TABLE `cost_suggestions` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_cs_deleted_at` ON `cost_suggestions`(`deleted_at`);
+
+-- cost_summaries 表
+ALTER TABLE `cost_summaries` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_cost_summaries_deleted_at` ON `cost_summaries`(`deleted_at`);
+
+-- resource_costs 表
+ALTER TABLE `resource_costs` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_rc_deleted_at` ON `resource_costs`(`deleted_at`);
+
+-- resource_activities 表
+ALTER TABLE `resource_activities` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_ra_deleted_at` ON `resource_activities`(`deleted_at`);
+
+-- image_registries 表
+ALTER TABLE `image_registries` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_ir_deleted_at` ON `image_registries`(`deleted_at`);
+
+-- image_scans 表
+ALTER TABLE `image_scans` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_is_deleted_at` ON `image_scans`(`deleted_at`);
+
+-- security_audit_logs 表
+ALTER TABLE `security_audit_logs` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_sal_deleted_at` ON `security_audit_logs`(`deleted_at`);
+
+-- security_reports 表
+ALTER TABLE `security_reports` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_sr_deleted_at` ON `security_reports`(`deleted_at`);
+
+-- compliance_rules 表
+ALTER TABLE `compliance_rules` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_cr_deleted_at` ON `compliance_rules`(`deleted_at`);
+
+-- config_checks 表
+ALTER TABLE `config_checks` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_cc_deleted_at` ON `config_checks`(`deleted_at`);
+
+-- encryption_keys 表
+ALTER TABLE `encryption_keys` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_ek_deleted_at` ON `encryption_keys`(`deleted_at`);
+
+-- feishu_requests 表
+ALTER TABLE `feishu_requests` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_fr_deleted_at` ON `feishu_requests`(`deleted_at`);
+
+-- k8s_clusters 表
+ALTER TABLE `k8s_clusters` ADD COLUMN IF NOT EXISTS `deleted_at` datetime(3) DEFAULT NULL COMMENT '软删除时间';
+CREATE INDEX IF NOT EXISTS `idx_kc_deleted_at` ON `k8s_clusters`(`deleted_at`);
