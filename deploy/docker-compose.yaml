@@ -1,0 +1,73 @@
+#********************************************************************
+# 项目名称：DevOps
+# 文件名称：docker-compose.yaml
+# 创建时间：2026-04-14 22:33:28
+#
+# 系统用户：jerion
+# 作　　者：Jerion
+# 联系邮箱：416685476@qq.com
+# 功能描述：生产部署配置，包含 MySQL、Redis 与 DevOps 应用容器
+#           环境变量从根目录 .env 加载，数据通过卷持久化
+#********************************************************************
+
+services:
+  # ----------------------------------------------------------------
+  # MySQL 数据库容器
+  # ----------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: devops-mysql
+    restart: unless-stopped
+    networks:
+      - devops_network
+    ports:
+      - 3306:3306
+    volumes:
+      - ./MySqlData:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      TZ: Asia/Shanghai
+    command: --default-authentication-plugin=mysql_native_password
+
+  # ----------------------------------------------------------------
+  # Redis 缓存容器
+  # ----------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: devops-redis
+    restart: unless-stopped
+    networks:
+      - devops_network
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redisData:/data
+    environment:
+      TZ: Asia/Shanghai
+
+  # ----------------------------------------------------------------
+  # DevOps 应用容器（前端 + 后端）
+  # ----------------------------------------------------------------
+  devops:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: registry.cn-shenzhen.aliyuncs.com/zyx3721/devops:latest
+    container_name: devops
+    restart: unless-stopped
+    networks:
+      - devops_network
+    ports:
+      - 80:80
+    env_file:
+      - ../.env
+    volumes:
+      - ./DevOpsData:/app/data
+    depends_on:
+      - mysql
+      - redis
+
+networks:
+  devops_network:
+    driver: bridge
