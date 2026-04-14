@@ -193,7 +193,7 @@
         <a-card :bordered="false">
           <a-row :gutter="16" style="margin-bottom: 16px">
             <a-col :span="16">
-              <a-input-search v-model:value="userSearchQuery" placeholder="输入用户名搜索" enter-button="搜索" @search="searchUsers" :loading="searchingUsers" />
+              <a-input-search v-model:value="userSearchQuery" placeholder="输入用户名、邮箱或手机号搜索" enter-button="搜索" @search="searchUsers" :loading="searchingUsers" />
             </a-col>
           </a-row>
           <a-table :columns="userColumns" :data-source="userList" :loading="searchingUsers" row-key="userid" :pagination="false">
@@ -338,6 +338,7 @@ const userColumns = [
   { title: '姓名', dataIndex: 'name', key: 'name', width: 100 },
   { title: 'User ID', dataIndex: 'userid', key: 'userid', width: 200 },
   { title: '手机', dataIndex: 'mobile', key: 'mobile', width: 150 },
+  { title: '邮箱', dataIndex: 'email', key: 'email', width: 200 },
   { title: '操作', key: 'action', width: 80 }
 ]
 
