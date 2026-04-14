@@ -698,11 +698,14 @@ CREATE TABLE IF NOT EXISTS `health_check_configs` (
   `timeout` int DEFAULT 10 COMMENT '超时时间(秒)',
   `interval` int DEFAULT 60 COMMENT '检查间隔(秒)',
   `enabled` tinyint(1) DEFAULT 1,
+  `last_status` varchar(20) DEFAULT 'unknown' COMMENT '最后检查状态',
+  `last_checked_at` datetime(3) DEFAULT NULL COMMENT '最后检查时间',
   `alert_config_id` bigint unsigned DEFAULT NULL COMMENT '告警配置ID',
   `description` varchar(500) DEFAULT '',
   `created_by` bigint unsigned DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_hcc_enabled` (`enabled`),
+  KEY `idx_hcc_last_status` (`last_status`),
   KEY `idx_hcc_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='健康检查配置';
 
@@ -2001,11 +2004,14 @@ CREATE TABLE IF NOT EXISTS `resource_costs` (
   `namespace` varchar(100) DEFAULT '' COMMENT '命名空间',
   `cluster_id` bigint unsigned DEFAULT NULL COMMENT '集群ID',
   `cost` decimal(12,4) DEFAULT 0.0000 COMMENT '成本金额',
+  `total_cost` decimal(14,4) DEFAULT 0.0000 COMMENT '总成本',
   `currency` varchar(10) DEFAULT 'CNY' COMMENT '货币单位',
   `period_start` datetime(3) DEFAULT NULL COMMENT '统计周期开始',
   `period_end` datetime(3) DEFAULT NULL COMMENT '统计周期结束',
   `cpu_cost` decimal(12,4) DEFAULT 0.0000 COMMENT 'CPU成本',
+  `cpu_request` decimal(10,2) DEFAULT 0.00 COMMENT 'CPU 请求量(核)',
   `memory_cost` decimal(12,4) DEFAULT 0.0000 COMMENT '内存成本',
+  `memory_request` decimal(10,2) DEFAULT 0.00 COMMENT '内存请求量(GB)',
   `storage_cost` decimal(12,4) DEFAULT 0.0000 COMMENT '存储成本',
   PRIMARY KEY (`id`),
   KEY `idx_rc_deleted_at` (`deleted_at`),
@@ -2048,6 +2054,7 @@ CREATE TABLE IF NOT EXISTS `cost_suggestions` (
   `suggestion_type` varchar(50) NOT NULL COMMENT '建议类型: rightsizing/idle/reserved',
   `description` text COMMENT '建议描述',
   `estimated_saving` decimal(12,4) DEFAULT 0.0000 COMMENT '预估节省金额',
+  `savings` decimal(14,4) DEFAULT 0.0000 COMMENT '预计节省金额',
   `status` varchar(20) DEFAULT 'pending' COMMENT '状态: pending/applied/dismissed',
   PRIMARY KEY (`id`),
   KEY `idx_csugg_deleted_at` (`deleted_at`),
@@ -2080,6 +2087,8 @@ CREATE TABLE IF NOT EXISTS `cost_budgets` (
   `cluster_id` bigint unsigned DEFAULT NULL COMMENT '集群ID',
   `namespace` varchar(100) DEFAULT '' COMMENT '命名空间',
   `amount` decimal(14,4) NOT NULL COMMENT '预算金额',
+  `monthly_budget` decimal(14,4) DEFAULT 0.0000 COMMENT '月度预算',
+  `current_cost` decimal(14,4) DEFAULT 0.0000 COMMENT '当前花费',
   `currency` varchar(10) DEFAULT 'CNY' COMMENT '货币单位',
   `period` varchar(20) NOT NULL COMMENT '预算周期: monthly/quarterly/yearly',
   `start_date` date NOT NULL COMMENT '开始日期',
@@ -2121,10 +2130,13 @@ CREATE TABLE IF NOT EXISTS `resource_activities` (
   `namespace` varchar(100) DEFAULT '' COMMENT '命名空间',
   `action` varchar(50) NOT NULL COMMENT '操作: create/update/delete/scale',
   `operator` varchar(100) DEFAULT '' COMMENT '操作人',
+  `is_zombie` tinyint(1) DEFAULT 0 COMMENT '是否为僵尸资源',
+  `last_active_at` datetime(3) DEFAULT NULL COMMENT '最后活跃时间',
   `detail` text COMMENT '操作详情 JSON',
   PRIMARY KEY (`id`),
   KEY `idx_ra_cluster_id` (`cluster_id`),
   KEY `idx_ra_resource_type` (`resource_type`),
+  KEY `idx_ra_is_zombie` (`is_zombie`),
   KEY `idx_ra_created_at` (`created_at`),
   KEY `idx_ra_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源活动记录';
@@ -2219,6 +2231,7 @@ CREATE TABLE IF NOT EXISTS `image_scans` (
   `image_tag` varchar(100) DEFAULT '' COMMENT '镜像标签',
   `image_digest` varchar(200) DEFAULT '' COMMENT '镜像摘要',
   `scan_status` varchar(20) DEFAULT 'pending' COMMENT '扫描状态: pending/scanning/completed/failed',
+  `status` varchar(20) DEFAULT 'pending' COMMENT '扫描状态',
   `critical_count` int DEFAULT 0 COMMENT '严重漏洞数',
   `high_count` int DEFAULT 0 COMMENT '高危漏洞数',
   `medium_count` int DEFAULT 0 COMMENT '中危漏洞数',
@@ -2228,6 +2241,7 @@ CREATE TABLE IF NOT EXISTS `image_scans` (
   PRIMARY KEY (`id`),
   KEY `idx_is_registry_id` (`registry_id`),
   KEY `idx_is_scan_status` (`scan_status`),
+  KEY `idx_is_status` (`status`),
   KEY `idx_is_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='镜像扫描结果';
 
@@ -2263,12 +2277,18 @@ CREATE TABLE IF NOT EXISTS `config_checks` (
   `resource_name` varchar(200) DEFAULT '' COMMENT '资源名称',
   `namespace` varchar(100) DEFAULT '' COMMENT '命名空间',
   `status` varchar(20) NOT NULL COMMENT '检查状态: pass/fail/skip',
+  `critical_count` int DEFAULT 0 COMMENT '严重问题数',
+  `high_count` int DEFAULT 0 COMMENT '高危问题数',
+  `medium_count` int DEFAULT 0 COMMENT '中危问题数',
+  `low_count` int DEFAULT 0 COMMENT '低危问题数',
+  `passed_count` int DEFAULT 0 COMMENT '通过数',
   `message` text COMMENT '检查消息',
   `checked_at` datetime(3) DEFAULT NULL COMMENT '检查时间',
   PRIMARY KEY (`id`),
   KEY `idx_cc_cluster_id` (`cluster_id`),
   KEY `idx_cc_rule_id` (`rule_id`),
   KEY `idx_cc_status` (`status`),
+  KEY `idx_cc_checked_at` (`checked_at`),
   KEY `idx_cc_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='配置合规检查记录';
 
