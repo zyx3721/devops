@@ -352,30 +352,59 @@ deploy/
 
 ## 4.2 准备配置文件
 
-进入 `deploy` 目录，创建 `.env` 环境变量文件：
+进入 `deploy` 目录，复制环境变量模板文件：
 
 ```bash
 cd deploy
+cp .env.example .env
 vim .env
 ```
 
-`.env` 文件内容参考：
+`.env` 文件内容参考（容器内已通过 Nginx 反向代理配置，以下为必填项）：
 
 ```bash
-# 数据库配置
-MYSQL_PASSWORD=your_database_password
+# -------------------- MySQL 配置（必填）--------------------
+# 容器间通信使用 service name（非 container_name）
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
 MYSQL_DATABASE=devops
 
-# Redis 配置（如需密码）
-REDIS_PASSWORD=
+# -------------------- Redis 配置（必填）--------------------
+# 容器间通信使用 service name（非 container_name）
+REDIS_ADDR=redis:6379
 
-# JWT 配置
-JWT_SECRET=your_jwt_secret_key
+# -------------------- Jenkins 配置（必填）--------------------
+# 外部 Jenkins 地址（需替换为实际地址）
+JENKINS_URL=http://your-jenkins-host:8080
+JENKINS_USER=admin
+JENKINS_TOKEN=your_jenkins_token
 
-# 服务器配置
-PORT=8080
-LOG_LEVEL=info
+# -------------------- JWT 配置（必填）--------------------
+# 生产环境必须修改为强密码
+JWT_SECRET=your-secret-key-change-in-production
+JWT_EXPIRATION=24
+
+# -------------------- 飞书配置（可选）--------------------
+FEISHU_APP_ID=your_app_id
+FEISHU_APP_SECRET=your_app_secret
+
+# -------------------- K8s 配置（可选）--------------------
+# 如需 K8s 集成，将 kubeconfig 文件放到 ./DevOpsData/ 目录
+K8S_KUBECONFIG_PATH=/app/data/kubeconfig
+K8S_NAMESPACE=default
+K8S_CHECK_TIMEOUT=300
+K8S_REGISTRY=
+K8S_REPOSITORY=
 ```
+
+**配置说明：**
+
+- **容器网络**：MySQL 和 Redis 使用 `docker-compose.yaml` 中定义的 service name（`mysql`、`redis`），而非 container_name
+- **容器架构**：容器内 Nginx 监听 80 端口，反向代理到 Go 后端 8080 端口，无需配置 `PORT` 变量
+- **必填项**：`MYSQL_PASSWORD`、`JWT_SECRET`、`JENKINS_*` 必须修改为真实值
+- **可选项**：飞书和 K8s 配置按需填写
 
 ## 4.3 构建镜像（可选）
 
