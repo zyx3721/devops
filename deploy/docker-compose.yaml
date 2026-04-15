@@ -26,9 +26,9 @@ services:
     volumes:
       - ./MySqlData:/var/lib/mysql
     environment:
-      # root 用户密码（使用 root 用户时启用，对应 .env 中 MYSQL_USER=root）
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
-      # 普通用户配置（使用非 root 用户时启用，需同时配置以下三项）
+      # root 用户密码（必填，MySQL 容器初始化必需）
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-${MYSQL_PASSWORD}}
+      # 普通用户配置（可选，启用后会创建普通用户并授予 MYSQL_DATABASE 全部权限）
       # MYSQL_USER: ${MYSQL_USER}
       # MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
