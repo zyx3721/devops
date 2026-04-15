@@ -865,3 +865,36 @@ https://your-domain.com/app/api/v1/feishu/oauth/callback
 - `GET /dashboard/stats` - 获取仪表盘统计数据
 - `GET /health` - 健康检查
 - `GET /metrics` - Prometheus 指标
+
+# 八、许可证
+
+本项目采用 [MIT License](LICENSE) 开源协议。
+
+MIT License 是一个宽松的开源许可证，允许您自由地使用、复制、修改、合并、发布、分发、再许可和/或销售本软件的副本。唯一的要求是在所有副本或重要部分中保留版权声明和许可声明。
+
+# 九、致谢
+
+感谢以下开源项目和技术社区的支持：
+
+- [Gin](https://github.com/gin-gonic/gin) - 高性能的 Go Web 框架
+- [Vue.js](https://github.com/vuejs/core) - 渐进式 JavaScript 框架
+- [Ant Design Vue](https://github.com/vueComponent/ant-design-vue) - 企业级 UI 组件库
+- [Element Plus](https://github.com/element-plus/element-plus) - 基于 Vue 3 的组件库
+- [GORM](https://github.com/go-gorm/gorm) - Go 语言 ORM 库
+- [Kubernetes](https://github.com/kubernetes/kubernetes) - 容器编排平台
+- [client-go](https://github.com/kubernetes/client-go) - Kubernetes Go 客户端
+- [XTerm.js](https://github.com/xtermjs/xterm.js) - Web 终端模拟器
+
+特别感谢所有为本项目贡献代码、提出建议和报告问题的开发者。
+
+# 十、联系方式
+
+如果您在使用过程中遇到问题，或有任何建议和反馈，欢迎通过以下方式联系：
+
+- **Email**: 416685476@qq.com
+- **GitHub Issues**: [https://github.com/zyx3721/JeriDevOps/issues](https://github.com/zyx3721/JeriDevOps/issues)
+- **项目主页**: [https://github.com/zyx3721/JeriDevOps](https://github.com/zyx3721/JeriDevOps)
+
+---
+
+**⭐ 如果这个项目对您有帮助，欢迎 Star 支持！**
