@@ -12,8 +12,8 @@
 
 set -e
 
-# 确保日志目录存在
-mkdir -p /app/logs
+# 创建持久化数据目录（挂载卷时目录可能不存在）
+mkdir -p /app/data/logs
 
 # 启动 supervisord
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
